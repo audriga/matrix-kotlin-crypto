@@ -7,17 +7,22 @@ import org.matrix.android.sdk.api.session.securestorage.EncryptedSecretContent
 import org.matrix.android.sdk.api.session.securestorage.RawBytesKeySpec
 import org.matrix.android.sdk.api.session.securestorage.SharedSecretStorageError
 import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
+import org.matrix.rustcomponents.sdk.crypto.ProgressListener as RustProgressListener
+import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
 //import org.matrix.android.sdk.api.util.fromBase64 // requires android
 //import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey
 //import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey.Companion.fromBase58
 //import org.matrix.android.sdk.api.session.crypto.keysbackup.BackupRecoveryKey.Companion.fromBase58
 //import org.matrix.rustcomponents.sdk.crypto.MegolmV1BackupKey
 import org.matrix.rustcomponents.sdk.crypto.version
+import uniffi.matrix_sdk_crypto.DecryptionSettings
+import uniffi.matrix_sdk_crypto.TrustRequirement
 import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import java.io.ByteArrayOutputStream
+import java.lang.Thread.sleep
 import java.nio.ByteBuffer
 import kotlin.io.encoding.Base64
 import kotlin.math.ceil
@@ -109,6 +114,88 @@ fun main() {
     )
 
     println(decryptedMegolmSession)
+
+//    Can't do this because this uses internal classes..
+//    val moshi = MoshiProvider.providesMoshi()
+//    val adapter = moshi.adapter(MegolmSessionData::class.java)
+//
+//    val sessionBackupData = adapter.fromJson(decryptedMegolmSession)
+    val rustOmlMachine = RustOmlMachine("@alice:ZetaHorologii", "migDevice", "/tmp/olmMachine", null)
+
+    // importDecryptedRoomKeys Expects the serialized form of MegolmSessionData from internal class
+    // package org.matrix.android.sdk.internal.crypto
+    // This should be the same as the decrypted session, with additional keys for sessionId and roomId,
+    // see decryptKeyBackupData in RustKeyBackupService.kt
+    // Todo: This appears to be loosing info like first_message_index or forwarded_count. Does the olmMachine not need
+    //  this? Do we need to check ourselves if we can decrypt a given message with a given session?
+    val roomId = "!CkmkaydvMtvVXXukVn:ZetaHorologii"
+    val encodedKey = "[" + decryptedMegolmSession.dropLast(1) +
+            ",\"room_id\":\"$roomId\"" +
+            ",\"session_id\":\"06pJO2EEEkWxans9viRZllaagZQO/XV4K2/Iuz0RMTQ\"" +
+            "}]"
+    val rustListener = object : RustProgressListener {
+        override fun onProgress(progress: Int, total: Int) {
+          println("Rust is processing keys $progress | $total")
+        }
+    }
+    rustOmlMachine.importDecryptedRoomKeys(encodedKey,rustListener)
+    println("Is the previous call async?")
+//    sleep(1000)
+
+    // Decrypting a message event that is encrypted with the session we just imported
+    val event = """{
+      "type": "m.room.encrypted",
+      "sender": "@bob:ZetaHorologii",
+      "content": {
+        "algorithm": "m.megolm.v1.aes-sha2",
+        "ciphertext": "AwgAEvADkU4yrylcCGcDNjW5sjQQVMmjo0xThpbPehiYVlxN3GFHR1QbB98cluK7pX9nKr3MlJufyaa9uBWLyCx8Qliw2I6cThWMMzJW1Sl7UskWb1OFDIQ06QITUiEm6dX2ctgertiMqoFlKnJO4zMdxHGVJWev5JNe+7GO1fB680lK5z+dgwuJRzSenGMWkvWyzFBtd3Fqm8+0JDLWgOItkm+fnHhTPj4WhLSLcxaFiL59kigH2BVTt5qDb4GrWWBlrFLD+2i0q1Yeh9N7eTmxTP7TkBSmspo4LdW4TA2WyQtlXuHPjb3Tk4IvUM8ZUiuLbW1tiv9XYXfR9phY8X67LEngLKWIKbJaEk4+gG/85YW7DuVWtXOSfHHpE73EFM58c5mKx5QTA8mDDRvdemKSEtf/U5sO2+DL0NwFn6Ysdpl+4fZSJ8A/Chb+9i9hjzd/AJKDczAJf94ndhhEwXzv6tmhkxTfm+sg+xn0BLBDTcBZsjPxcRlRoOdhXZRE452rB13zRzybgSLLFFEXRmiS2ATTiWLPdt17yHIJSUvT3a6zUjrgyyr9b9du3+9XExc7eJc090ZjQNcr0Iv6IdYNhDNpDhl0Nm0PNVZF3w4QLmpGyV71ixNZYmYSGgZ1maBLzzLVdV7gdtvxS3IDjOx4KUZo8nY8i5TjLk1pAtJ9w47p+G4CKKPnUGBUwcH3qiegPklayKIBRdU7n5vcf9caH51yPDd6GRQx/e9vvgv9Kl2EfhUKc3JSuJd0Bw",
+        "device_id": "UHCPTGMSVS",
+        "sender_key": "fDxrjAKZ0ZDyunTVJDbQD9jSTwcZw40OrMYOdmKuHjY",
+        "session_id": "06pJO2EEEkWxans9viRZllaagZQO/XV4K2/Iuz0RMTQ"
+      },
+      "room_id": "!CkmkaydvMtvVXXukVn:ZetaHorologii",
+      "origin_server_ts": 1762185350129,
+      "unsigned": {
+        "age": 9305016934,
+        "m.relations": {
+          "m.reference": {
+            "chunk": [
+              {
+                "event_id": "${'$'}Ho5l3WiVEm5cu9ta3b0oJFhAgIHXQggVyf7WV8KQ4ok"
+              },
+              {
+                "event_id": "${'$'}NgFdXdKYdPPhAjoTouw0x-VPSEij34FM5YG7sAfhpBU"
+              },
+              {
+                "event_id": "${'$'}ssmNxFbGnVCKXfmuO_IGU5KVP4oz0HfXkFhipZuklGk"
+              }
+            ]
+          }
+        }
+      },
+      "event_id": "${'$'}kNIvOS5IjkbcQ_a5GmT2tWppPrexQc2uQq5OYhJPqqI",
+      "user_id": "@bob:ZetaHorologii",
+      "age": 9305016934
+    }"""
+
+    val (clearEvent, senderCurve25519Key, claimedEd25519Key, forwardingCurve25519Chain, shieldState) = rustOmlMachine.decryptRoomEvent(
+        event = event,
+        roomId = roomId,
+        handleVerificationEvents = false,
+        strictShields = false,
+        decryptionSettings = DecryptionSettings(TrustRequirement.UNTRUSTED)
+    )
+    println(clearEvent)
+
+    //  I can decrypt the same event twice, which means the olmMachine is keeping track of previous states
+    val (clearEvent2, _, _, _, _) = rustOmlMachine.decryptRoomEvent(
+        event = event,
+        roomId = roomId,
+        handleVerificationEvents = false,
+        strictShields = false,
+        decryptionSettings = DecryptionSettings(TrustRequirement.UNTRUSTED)
+    )
+    println(clearEvent2)
 }
 
 // Copied from DefaultSharedSecretStorageService.kt
