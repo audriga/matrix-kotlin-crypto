@@ -9,10 +9,8 @@ import org.matrix.android.sdk.api.session.securestorage.SharedSecretStorageError
 import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
 import org.matrix.rustcomponents.sdk.crypto.ProgressListener as RustProgressListener
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
-
+// Todo: Potentially get rid of matrix-android-sdk2 and only use rustcomponents sdk directly.
 //import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey
-//import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey.Companion.fromBase58
-//import org.matrix.android.sdk.api.session.crypto.keysbackup.BackupRecoveryKey.Companion.fromBase58
 //import org.matrix.rustcomponents.sdk.crypto.MegolmV1BackupKey
 import org.matrix.rustcomponents.sdk.crypto.version
 import uniffi.matrix_sdk_crypto.DecryptionSettings
@@ -36,19 +34,20 @@ fun main() {
 
     val aliceRecoveryKey = "EsTd Ptqg Qakz Xz3R 4276 cT5w GDrW TYXU wBUd wjyj xWPm 92e9";
 
-    //         let key =
-    //                    SecretStorageKey::from_account_data(secret_storage_key, secret_key_content)?;
-
-
+    // Note: Came across `BackupRecoveryKey.fromBase58(backupRecoveryKey)`
+    //   via `org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey.Companion.fromBase58`
+    //   or directly `import org.matrix.android.sdk.api.session.crypto.keysbackup.BackupRecoveryKey.Companion.fromBase58`.
+    //   This can be a bit confusing, since the "Recovery Key" shown by clients is also encoded in base58, and this
+    //   function would successfully decode `aliceRecoveryKey`. However, `aliceRecoveryKey` is the encoded private key
+    //   for the SSSS store, which can then be used to decrypt the backup key.
     val keyBackupKeyName = KEYBACKUP_SECRET_SSSS_NAME // "m.megolm_backup.v1"
     val ssssPrivateKeySpec = RawBytesKeySpec.fromRecoveryKey(aliceRecoveryKey)
     if (ssssPrivateKeySpec == null) {
         println("Decoded sssPrivateKeySpec is null!")
         exitProcess(1)
     }
-//    SharedSecretStorageService.getSecret()
 
-    // Values from alice's account data:
+    // Values from Alice's account data:
     /*
           {
         "type": "m.megolm_backup.v1",
@@ -74,10 +73,10 @@ fun main() {
 
     // TODO see also QuadSTests https://github.com/matrix-org/matrix-android-sdk2/blob/a37dfa83cbe03cf74951d66a860a70b49484e32f/matrix-sdk-android/src/androidTest/java/org/matrix/android/sdk/internal/crypto/ssss/QuadSTests.kt#L124
 
-    val decodedRecoveryKey = BackupRecoveryKey.fromBase64(decryptedBackupKey) // BackupRecoveryKey.fromBase58(aliceRecoveryKey)
+    val decodedRecoveryKey = BackupRecoveryKey.fromBase64(decryptedBackupKey)
     println(decodedRecoveryKey.megolmV1PublicKey().backupAlgorithm)
 
-    // Some megolm session gotten via room_keys/keys
+    // Some megolm session gotten via room_keys/keys api call
     /*
     {
   "rooms": {
@@ -103,17 +102,20 @@ fun main() {
 
     println(decryptedMegolmSession)
 
-//    Can't do this because this uses internal classes..
-//    val moshi = MoshiProvider.providesMoshi()
-//    val adapter = moshi.adapter(MegolmSessionData::class.java)
-//
-//    val sessionBackupData = adapter.fromJson(decryptedMegolmSession)
+    // Note, when matrix-android-sdk2 internally decrypts a Megolm session,
+    // it parses it to a SessionData object (see copied code snippet below).
+    // However, we cannot do this here without copying the relevant classes, since these classes are internal.
+    // ```kotlin
+    // val moshi = MoshiProvider.providesMoshi()
+    // val adapter = moshi.adapter(MegolmSessionData::class.java)
+    // val sessionBackupData = adapter.fromJson(decryptedMegolmSession)
+    // ```
     val rustOmlMachine = RustOmlMachine("@alice:ZetaHorologii", "migDevice", "/tmp/olmMachine", null)
 
     // importDecryptedRoomKeys Expects the serialized form of MegolmSessionData from internal class
     // package org.matrix.android.sdk.internal.crypto
     // This should be the same as the decrypted session, with additional keys for sessionId and roomId,
-    // see decryptKeyBackupData in RustKeyBackupService.kt
+    // see decryptKeyBackupData in RustKeyBackupService.kt of matrix-android-sdk2 .
     // Todo: This appears to be loosing info like first_message_index or forwarded_count. Does the olmMachine not need
     //  this? Do we need to check ourselves if we can decrypt a given message with a given session?
     val roomId = "!CkmkaydvMtvVXXukVn:ZetaHorologii"
