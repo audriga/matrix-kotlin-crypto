@@ -9,7 +9,7 @@ import org.matrix.android.sdk.api.session.securestorage.SharedSecretStorageError
 import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
 import org.matrix.rustcomponents.sdk.crypto.ProgressListener as RustProgressListener
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
-//import org.matrix.android.sdk.api.util.fromBase64 // requires android
+
 //import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey
 //import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey.Companion.fromBase58
 //import org.matrix.android.sdk.api.session.crypto.keysbackup.BackupRecoveryKey.Companion.fromBase58
@@ -28,24 +28,12 @@ import kotlin.io.encoding.Base64
 import kotlin.math.ceil
 import kotlin.system.exitProcess
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 fun main() {
     val version = version()
     val cryptoVersion = Matrix.getCryptoVersion(longFormat = true)
     println("version, $version!")
     println("cryptoVersion, $cryptoVersion!")
-//    Matrix(
-//        context = this,
-//        matrixConfiguration = MatrixConfiguration()
-//    )
-//    val megolmV1BackupKey = MegolmV1BackupKey(
-//        publicKey = TODO(),
-//        signatures = TODO(),
-//        passphraseInfo = TODO(),
-//        backupAlgorithm = TODO()
-//    )
-//    megolmV1BackupKey.
+
     val aliceRecoveryKey = "EsTd Ptqg Qakz Xz3R 4276 cT5w GDrW TYXU wBUd wjyj xWPm 92e9";
 
     //         let key =
@@ -313,6 +301,9 @@ internal object HkdfSha256 {
     private const val HASH_LEN = 32
     private const val HASH_ALG = "HmacSHA256"
 }
+
+// Replaces the extension function used by the top level matrix library, since
+// `org.matrix.android.sdk.api.util.fromBase64` requires android
 fun String.fromBase64(): ByteArray {
     return Base64.decode(this)
 }
