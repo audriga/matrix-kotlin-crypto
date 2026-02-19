@@ -8,6 +8,9 @@ import org.matrix.rustcomponents.sdk.crypto.BackupRecoveryKey
 // Note: Corresponding matrix-android-sdk2 import: org.matrix.android.sdk.api.session.crypto.keysbackup.BackupRecoveryKey
 import org.matrix.android.sdk.api.session.securestorage.EncryptedSecretContent
 import org.matrix.android.sdk.api.session.securestorage.RawBytesKeySpec
+import org.matrix.rustcomponents.sdk.crypto.EncryptionSettings
+import org.matrix.rustcomponents.sdk.crypto.EventEncryptionAlgorithm
+import org.matrix.rustcomponents.sdk.crypto.HistoryVisibility
 import org.matrix.rustcomponents.sdk.crypto.MegolmV1BackupKey
 import org.matrix.rustcomponents.sdk.crypto.version
 import uniffi.matrix_sdk_crypto.DecryptionSettings
@@ -21,19 +24,50 @@ fun main() {
     // Note, could also get additional version info via Matrix.getCryptoVersion(longFormat = true)
     println("Rust SDK version, $version!")
 
-    decryptPoC()
+    val roomId = "!CkmkaydvMtvVXXukVn:ZetaHorologii"
+    val rustOlmMachine = decryptPoC(roomId)
+    encryptWithRecoveredMegolmSession(rustOlmMachine, roomId)
 }
 
-private fun decryptPoC() {
+private fun encryptWithRecoveredMegolmSession(rustOlmMachine: RustOmlMachine, roomId: String) {
+    val users = listOf("@bob:ZetaHorologii")
+    val missingSessions = rustOlmMachine.getMissingSessions(users)
+    println(missingSessions)
+    // Via PrepareToEncryptUseCase.kt / CryptoRoomInfo.kt
+    val settings = EncryptionSettings(
+        algorithm = EventEncryptionAlgorithm.MEGOLM_V1_AES_SHA2,
+        onlyAllowTrustedDevices = false,
+        rotationPeriod = 604800000.toULong(),
+        rotationPeriodMsgs = 100.toULong(),
+        historyVisibility = HistoryVisibility.SHARED,
+        errorOnVerifiedUserProblem = false,
+    )
+    val shareRoomKeyRequests = rustOlmMachine.shareRoomKey(roomId, users, settings)
+    println(shareRoomKeyRequests)
+    // Returns error "Session wasn't created nor shared", if shareRoomKey was not previously called.
+    val encryptedEvent = rustOlmMachine.encrypt(
+        roomId,
+        "m.room.message",
+        """
+            {
+             "msgtype": "m.text",
+             "body": "Encrypted hi from API"
+            }
+        """.trimIndent(),
+    )
+    println(encryptedEvent)
+}
+
+private fun decryptPoC(roomId: String): RustOmlMachine {
     val ssssPrivateKeySpec = decodeAliceSSSSRecoveryKey()
 
     val decodedRecoveryKey = decryptAliceMegolmBackupKey(ssssPrivateKeySpec)
     val decryptedMegolmSession = decryptSampleMegolmSession(decodedRecoveryKey)
 
-    val roomId = "!CkmkaydvMtvVXXukVn:ZetaHorologii"
     val rustOmlMachine = createOlmMachineAndImportDecryptedSession(decryptedMegolmSession, roomId)
 
     decryptSomeRoomEvent(rustOmlMachine, roomId)
+    return rustOmlMachine
 }
 
 private fun decryptSomeRoomEvent(rustOmlMachine: RustOmlMachine, roomId: String) {
