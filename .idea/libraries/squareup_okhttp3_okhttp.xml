@@ -1,0 +1,35 @@
+<component name="libraryTable">
+  <library name="squareup.okhttp3.okhttp" type="repository">
+    <properties maven-id="com.squareup.okhttp3:okhttp:4.11.0" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/okhttp-4.11.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/okio-3.2.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/okio-jvm-3.2.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-1.6.20.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-common-1.6.20.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/annotations-13.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-jdk8-1.6.20.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-jdk7-1.6.20.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$PROJECT_DIR$/lib/okhttp-4.11.0-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/okio-3.2.0-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/okio-jvm-3.2.0-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-1.6.20-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-common-1.6.20-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/annotations-13.0-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-jdk8-1.6.20-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-jdk7-1.6.20-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/okhttp-4.11.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/okio-3.2.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/okio-jvm-3.2.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-1.6.20-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-common-1.6.20-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/annotations-13.0-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-jdk8-1.6.20-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/kotlin-stdlib-jdk7-1.6.20-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

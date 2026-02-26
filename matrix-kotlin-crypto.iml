@@ -12,5 +12,10 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
     <orderEntry type="library" name="lib" level="project" />
+    <orderEntry type="library" name="squareup.moshi.adapters" level="project" />
+    <orderEntry type="library" name="squareup.okhttp3.okhttp" level="project" />
+    <orderEntry type="library" name="squareup.moshi" level="project" />
+    <orderEntry type="library" name="json" level="project" />
+    <orderEntry type="library" name="squareup.moshi.kotlin.codegen" level="project" />
   </component>
 </module>

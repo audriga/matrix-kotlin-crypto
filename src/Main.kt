@@ -5,9 +5,6 @@ import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_S
 import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.USER_SIGNING_KEY_SSSS_NAME
-import org.matrix.android.sdk.api.session.crypto.keysbackup.KeysBackupService
-import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupAuthData
-import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupCreationInfo
 // Todo: We currently solely use a few parsing methods and data classes.
 //  Potentially copy paste them in the codebase (like we did for some internal utils we needed)
 //  And remove dependency to matrix-android-sdk2 (only using rustcomponents sdk directly).
@@ -159,65 +156,6 @@ fun main() {
     deleteDirectoryByPath(olmMachinePath)
 }
 
-private fun bootstrapEncryption(rustOlmMachine: RustOmlMachine) {
-    rustOlmMachine.bootstrapCrossSigning()
-    println(rustOlmMachine.crossSigningStatus())
-    val exportCrossSigningKeys = rustOlmMachine.exportCrossSigningKeys()
-    println(exportCrossSigningKeys)
-    val backupRecoveryKey = BackupRecoveryKey()
-    val publicKey = backupRecoveryKey.megolmV1PublicKey()
-    println("PublicKey: $publicKey")
-//    rustOlmMachine.sign()
-
-//    val backupAuthData = SignalableMegolmBackupAuthData(
-//        publicKey = publicKey.publicKey,
-//        privateKeySalt = publicKey.passphraseInfo?.privateKeySalt,
-//        privateKeyIterations = publicKey.passphraseInfo?.privateKeyIterations
-//    )
-//    val canonicalJson = JsonCanonicalizer.getCanonicalJson(
-//        Map::class.java,
-//        backupAuthData.signalableJSONDictionary()
-//    )
-//
-//    val signedMegolmBackupAuthData = MegolmBackupAuthData(
-//        publicKey = backupAuthData.publicKey,
-//        privateKeySalt = backupAuthData.privateKeySalt,
-//        privateKeyIterations = backupAuthData.privateKeyIterations,
-//        signatures = rustOlmMachine.sign(canonicalJson)
-//    )
-//
-//    MegolmBackupCreationInfo(
-//        algorithm = publicKey.backupAlgorithm,
-//        authData = signedMegolmBackupAuthData,
-//        recoveryKey = backupRecoveryKey
-//    )
-
-    val publicKeySignature: Map<String, Map<String, String>> = rustOlmMachine.sign(
-        """{
-        "public_key": $publicKey
-    }""".trimMargin()
-    )
-    val publicKeySignatureJson = publicKeySignature.map { (key, value) ->
-        "\"$key\": {\n${
-            value.map { (keyInner, valueInner) -> "\"$keyInner\":\"$valueInner\"" }.joinToString(",\n")
-        }\n}"
-    }.joinToString(",\n")
-    println(publicKeySignatureJson)
-
-    val backupInfoJson = """{
-        "algorithm": "$MXCRYPTO_ALGORITHM_MEGOLM_BACKUP",
-        "auth_data": {
-            "public_key": "${publicKey.publicKey}",
-            "signatures": {
-                $publicKeySignatureJson
-            }
-        }
-    }""".trimMargin()
-    println(backupInfoJson)
-    val verifyBackup = rustOlmMachine.verifyBackup(backupInfoJson)
-    println(verifyBackup)
-    // TODO Have not figured out yet, how to properly create the key backup with a signature.
-}
 
 private fun verifyDeviceWithDecryptedCrossSigningKeys(
     ssssPrivateKeySpec: RawBytesKeySpec,
@@ -439,7 +377,7 @@ private fun decryptSampleMegolmSession(decodedRecoveryKey: BackupRecoveryKey): S
     // it parses it to a SessionData object (see copied code snippet below).
     // However, we cannot do this here without copying the relevant classes, since these classes are internal.
     // ```kotlin
-    // val moshi = MoshiProvider.providesMoshi()
+    // val moshi = keybackup.MoshiProvider.providesMoshi()
     // val adapter = moshi.adapter(MegolmSessionData::class.java)
     // val sessionBackupData = adapter.fromJson(decryptedMegolmSession)
     // ```
