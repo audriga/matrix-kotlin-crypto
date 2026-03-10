@@ -31,6 +31,7 @@ import org.matrix.rustcomponents.sdk.crypto.Request
 import org.matrix.rustcomponents.sdk.crypto.SignatureUploadRequest
 import org.matrix.rustcomponents.sdk.crypto.UploadSigningKeysRequest
 import uniffi.matrix_sdk_crypto.LocalTrust
+import java.io.File
 import java.security.SecureRandom
 import java.util.UUID
 import javax.crypto.Cipher
@@ -38,11 +39,13 @@ import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.experimental.and
+import kotlin.io.encoding.Base64
 import kotlin.jvm.java
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
 
 private const val olmMachinePath = "/tmp/olmMachine"
-private const val userId = "@freshuser4:ZetaHorologii"
+private const val USER_ID_LOCAL_PART = "freshuser6"
+private const val userId = "@$USER_ID_LOCAL_PART:ZetaHorologii"
 private const val deviceId = "migDevice"
 
 private const val baseUrl = "http://ZetaHorologii:8008/"
@@ -51,16 +54,37 @@ private const val URI_API_PREFIX_PATH_V3 = "$URI_API_PREFIX_PATH/v3/"
 private const val USER_DEVICE_QUERY_PARAMETERS = "?user_id=$userId&device_id=$deviceId"
 private const val CURL_HEADERS = $$" --header \"Authorization: Bearer $TOKEN_AS\" \\\n" +
         " --header 'Content-Type: application/json'"
-const val KEY_ID_BASE = "m.secret_storage.key"
+private const val KEY_ID_BASE = "m.secret_storage.key"
 private const val DEFAULT_KEY_ID = "m.secret_storage.default_key"
+private const val SCRIPT_PATH = "/tmp/setupSSSS.sh"
+private val scriptFile = File(SCRIPT_PATH)
 fun main() {
     deleteDirectoryByPath(olmMachinePath)
+    if (scriptFile.exists()) {
+        scriptFile.delete()
+    }
+    scriptFile.createNewFile()
     val rustOlmMachine = RustOmlMachine(userId, deviceId, olmMachinePath, null)
 
     bootstrapEncryption(rustOlmMachine)
 }
 
 private fun bootstrapEncryption(rustOlmMachine: RustOmlMachine) {
+    scriptFile.writeText("""#!/usr/bin/env bash
+        |
+        |# Create the new user
+        |podman exec -it docker_synapse_1 register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml  -u $USER_ID_LOCAL_PART -p test
+        |# Create the device
+        |curl --request PUT \
+        | --url "http://ZetaHorologii:8008/_matrix/client/v3/devices/migDevice?user_id=$userId" \
+        | --header "Authorization: Bearer ${'$'}TOKEN_AS" \
+        | -d '{
+        |    "display_name": "Migration Worker"
+        |  }'
+        |
+    """.trimMargin())
+
+
     val bootstrapCrossSigningResult = rustOlmMachine.bootstrapCrossSigning()
     crossSigningUploadRequests(bootstrapCrossSigningResult)
     // Todo maybe I need to mark the three key requests as sent? rustOlmMachine.markRequestAsSent(bootstrapCrossSigningResult.uploadKeysRequest.requestId)
@@ -165,13 +189,13 @@ private fun createKeyBackupVersion(
      */
     println("Create Keys Backup version body:\n$createKeysBackupVersionBody")
     val createKeysBackupVersionPath = "room_keys/version"
-    println(
-        "Curl 4: Create keys backup version\n" +
-                "curl --request POST \\\n" +
-                " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$createKeysBackupVersionPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
-                "$CURL_HEADERS \\\n" +
-                " -d '$keyBackupVersionBodyJson'"
-    )
+    val curlCall = "# Curl 4: Create keys backup version\n" +
+            "curl --request POST \\\n" +
+            " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$createKeysBackupVersionPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
+            "$CURL_HEADERS \\\n" +
+            " -d '$keyBackupVersionBodyJson'"
+    scriptFile.appendText(curlCall+"\n")
+    println(curlCall)
 
     // TODO: Now upload the private keys, see note from thursday
 
@@ -256,13 +280,13 @@ private fun uploadKeys(uploadKeysRequest: Request.KeysUpload) {
     // @POST(NetworkConstants.URI_API_PREFIX_PATH_R0 + "keys/upload")
     println("uploadKeys: $uploadKeysRequest")
     val keyUploadPath = "keys/upload"
-    println(
-        "Curl 1: Upload public keys\n" +
-                "curl --request POST \\\n" +
-                " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$keyUploadPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
-                "$CURL_HEADERS \\\n" +
-                " -d '${uploadKeysRequest.body}'"
-    )
+    val curlCall = "# Curl 1: Upload public keys\n" +
+            "curl --request POST \\\n" +
+            " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$keyUploadPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
+            "$CURL_HEADERS \\\n" +
+            " -d '${uploadKeysRequest.body}'"
+    scriptFile.appendText(curlCall+"\n")
+    println(curlCall)
 
 }
 
@@ -272,26 +296,26 @@ private fun uploadSigningKeys(uploadSigningKeysRequest: UploadSigningKeysRequest
     // @POST(NetworkConstants.URI_API_PREFIX_PATH_UNSTABLE + "keys/device_signing/upload")
     println("uploadSigningKeys: $uploadSigningKeysRequest")
     val deviceSigningPath = "keys/device_signing/upload"
-    println(
-        "Curl 2: Upload public signing keys\n" +
-                "curl --request POST \\\n" +
-                " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$deviceSigningPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
-                "$CURL_HEADERS \\\n" +
-                " -d '$uploadSigningKeysBodyJson'"
-    )
+    val curlCall = "# Curl 2: Upload public signing keys\n" +
+            "curl --request POST \\\n" +
+            " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$deviceSigningPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
+            "$CURL_HEADERS \\\n" +
+            " -d '$uploadSigningKeysBodyJson'"
+    scriptFile.appendText(curlCall+"\n")
+    println(curlCall)
 }
 
 private fun uploadSignatures(uploadSignatureRequest: SignatureUploadRequest) {
     // @POST(NetworkConstants.URI_API_PREFIX_PATH_UNSTABLE + "keys/signatures/upload")
     println("uploadSignature: $uploadSignatureRequest")
     val uploadSignaturesPath = "keys/signatures/upload"
-    println(
-        "Curl 3: Upload key signature\n" +
-                "curl --request POST \\\n" +
-                " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$uploadSignaturesPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
-                "$CURL_HEADERS \\\n" +
-                " -d '${uploadSignatureRequest.body}'"
-    )
+    val curlCall = "# Curl 3: Upload key signature\n" +
+            "curl --request POST \\\n" +
+            " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$uploadSignaturesPath$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
+            "$CURL_HEADERS \\\n" +
+            " -d '${uploadSignatureRequest.body}'"
+    scriptFile.appendText(curlCall+"\n")
+    println(curlCall)
 }
 
 
@@ -402,23 +426,41 @@ internal fun generateKey(
             )
         } ?: storageKeyContent
     val ssssKeySpec = RawBytesKeySpec(bytes)
-    updateDefaultSecretStorageKey("$KEY_ID_BASE.$keyId", signedContent, ssssKeySpec)
+    val (iv, mac) = updateDefaultSecretStorageKey("$KEY_ID_BASE.$keyId", signedContent, ssssKeySpec)
+    val recoveryKey = computeRecoveryKey(bytes)
+
+    // Trying to verify the key would decrypt correctly
+    val decodedSpec = RawBytesKeySpec.fromRecoveryKey(recoveryKey)!!
+    val empty = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
+    val (_, mac1, _, _) = encryptAesHmacSha2(
+        decodedSpec,
+        empty,
+        empty,
+        IvParameterSpec( Base64.withPadding(Base64.PaddingOption.ABSENT).decode(iv!!))
+    )
+    if (mac.equals(mac1)) {
+        println("Verify recovery key works")
+    } else{
+        println("Verify recovery key does not work")
+    }
+
     return  SsssKeyCreationInfo(
             keyId = keyId,
             content = storageKeyContent,
-            recoveryKey = computeRecoveryKey(bytes),
+            recoveryKey = recoveryKey,
             keySpec = ssssKeySpec
         )
 
 }
 
-internal fun updateDefaultSecretStorageKey(type: String, content: SecretStorageKeyContent, ssssKeySpec: RawBytesKeySpec) {
+internal fun updateDefaultSecretStorageKey(type: String, content: SecretStorageKeyContent, ssssKeySpec: RawBytesKeySpec): Pair<String?, String?> {
     // TODO For some reason I could not find evidence of the element app doing this?
     //  But according to my spec understanding this should be done.
-    val (ciphertext, mac, ephemeral, initializationVector) = encryptAesHmacSha2(
+    val empty = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
+    val (_, mac, ephemeral, initializationVector) = encryptAesHmacSha2(
         ssssKeySpec,
-        type,
-        content.toJsonString()
+        empty,//todo 32 byte of 0, setp 1
+        empty // todo also 32 byte of 0, step 3
     )
     val uploadContent = mapOf(
         "algorithm" to "${content.algorithm}",
@@ -429,9 +471,8 @@ internal fun updateDefaultSecretStorageKey(type: String, content: SecretStorageK
 
     updateUserAccountData(type, uploadContent)
 
-
     // todo Test the key would verify!
-
+    return Pair(initializationVector, mac)
 }
 
 private fun updateUserAccountData(type: String, uploadContent: Map<String, Any>) {
@@ -452,18 +493,23 @@ private fun updateUserAccountData(type: String, uploadContent: Map<String, Any>)
     val uploadContentJson = moshi.adapter(Map::class.java).toJson(uploadContent)
     val userPath = "user/$userId/"
     val accountDataPath = "account_data/"
-    println(
-        "Curl: Upload user account data \n" +
-                "curl --request PUT \\\n" +
-                " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$userPath$accountDataPath$type$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
-                "$CURL_HEADERS \\\n" +
-                " -d '$uploadContentJson'"
-    )
+    val curlCall = "# Curl: Upload user account data \n" +
+            "curl --request PUT \\\n" +
+            " --url \"$baseUrl$URI_API_PREFIX_PATH_V3$userPath$accountDataPath$type$USER_DEVICE_QUERY_PARAMETERS\" \\\n" +
+            "$CURL_HEADERS \\\n" +
+            " -d '$uploadContentJson'"
+    scriptFile.appendText(curlCall+"\n")
+    println(curlCall)
 }
 
 //Copied from DefaultSharedSecretStorageService
 @Throws
-private fun encryptAesHmacSha2(secretKey: SsssKeySpec, secretName: String, clearDataBase64: String): EncryptedSecretContent {
+private fun encryptAesHmacSha2(
+    secretKey: SsssKeySpec,
+    secretName: String,
+    clearDataBase64: String,
+    providedIv: IvParameterSpec? = null,
+): EncryptedSecretContent {
     secretKey as RawBytesKeySpec
     val pseudoRandomKey = HkdfSha256.deriveSecret(
         secretKey.privateKey,
@@ -488,7 +534,7 @@ private fun encryptAesHmacSha2(secretKey: SsssKeySpec, secretName: String, clear
     val cipher = Cipher.getInstance("AES/CTR/NoPadding")
 
     val secretKeySpec = SecretKeySpec(aesKey, "AES")
-    val ivParameterSpec = IvParameterSpec(iv)
+    val ivParameterSpec = providedIv ?: IvParameterSpec(iv)
     cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec)
     // secret are not that big, just do Final
     val cipherBytes = cipher.doFinal(clearDataBase64.toByteArray())
