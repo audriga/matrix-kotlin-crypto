@@ -44,7 +44,7 @@ import kotlin.jvm.java
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
 
 private const val olmMachinePath = "/tmp/olmMachine"
-private const val USER_ID_LOCAL_PART = "freshuser6"
+private const val USER_ID_LOCAL_PART = "freshuser7"
 private const val userId = "@$USER_ID_LOCAL_PART:ZetaHorologii"
 private const val deviceId = "migDevice"
 
@@ -403,6 +403,7 @@ internal fun generateKey(
     keyName: String,
     keySigner: KeySigner?
 ): SsssKeyCreationInfo {
+    println("======= Creating key $keyId ============")
         val bytes = (key as? RawBytesKeySpec)?.privateKey
             ?: ByteArray(32).also {
                 SecureRandom().nextBytes(it)
@@ -428,13 +429,14 @@ internal fun generateKey(
     val ssssKeySpec = RawBytesKeySpec(bytes)
     val (iv, mac) = updateDefaultSecretStorageKey("$KEY_ID_BASE.$keyId", signedContent, ssssKeySpec)
     val recoveryKey = computeRecoveryKey(bytes)
+    println("Recovery Key: $recoveryKey")
 
     // Trying to verify the key would decrypt correctly
     val decodedSpec = RawBytesKeySpec.fromRecoveryKey(recoveryKey)!!
     val empty = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
     val (_, mac1, _, _) = encryptAesHmacSha2(
         decodedSpec,
-        empty,
+        "",
         empty,
         IvParameterSpec( Base64.withPadding(Base64.PaddingOption.ABSENT).decode(iv!!))
     )
@@ -457,9 +459,10 @@ internal fun updateDefaultSecretStorageKey(type: String, content: SecretStorageK
     // TODO For some reason I could not find evidence of the element app doing this?
     //  But according to my spec understanding this should be done.
     val empty = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
+//    val empty = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     val (_, mac, ephemeral, initializationVector) = encryptAesHmacSha2(
         ssssKeySpec,
-        empty,//todo 32 byte of 0, setp 1
+        "",//todo empty string for step 1
         empty // todo also 32 byte of 0, step 3
     )
     val uploadContent = mapOf(
@@ -511,16 +514,23 @@ private fun encryptAesHmacSha2(
     providedIv: IvParameterSpec? = null,
 ): EncryptedSecretContent {
     secretKey as RawBytesKeySpec
+    val secretNameBytes = secretName.toByteArray()
+    val privateKeyBytes = secretKey.privateKey
+    println("privateKeyBytes: ${privateKeyBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${privateKeyBytes.size} bytes), hex: ${privateKeyBytes.toHexString()}")
     val pseudoRandomKey = HkdfSha256.deriveSecret(
-        secretKey.privateKey,
+        privateKeyBytes,
         ByteArray(32) { 0.toByte() },
-        secretName.toByteArray(),
+        secretNameBytes,
         64
     )
 
     // The first 32 bytes are used as the AES key, and the next 32 bytes are used as the MAC key
     val aesKey = pseudoRandomKey.copyOfRange(0, 32)
     val macKey = pseudoRandomKey.copyOfRange(32, 64)
+
+
+    println("aesKey = ${aesKey.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${aesKey.size} bytes), hex ${aesKey.toHexString()}\n" +
+            "macKey = ${macKey.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${macKey.size} bytes), hex ${macKey.toHexString()}")
 
     val secureRandom = SecureRandom()
     val iv = ByteArray(16)
@@ -530,6 +540,7 @@ private fun encryptAesHmacSha2(
     // (which would mean we wouldn't be able to decrypt on Android). The loss
     // of a single bit of salt is a price we have to pay.
     iv[9] = iv[9] and 0x7f
+    println("Iv = ${iv.map { b -> b.toInt() and 0xFF}.joinToString(", ")} (${iv.size} bytes), hex ${iv.toHexString()}\n")
 
     val cipher = Cipher.getInstance("AES/CTR/NoPadding")
 
@@ -537,9 +548,12 @@ private fun encryptAesHmacSha2(
     val ivParameterSpec = providedIv ?: IvParameterSpec(iv)
     cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec)
     // secret are not that big, just do Final
-    val cipherBytes = cipher.doFinal(clearDataBase64.toByteArray())
+    val clearDataBytes = clearDataBase64.toByteArray()
+    val cipherBytes = cipher.doFinal(clearDataBytes)
     require(cipherBytes.isNotEmpty())
 
+    println("SecretName: \"$secretName\", ${secretNameBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${secretNameBytes.size} bytes), hex: ${secretNameBytes.toHexString()}")
+    println("Plaintext: \"$clearDataBase64\", ${clearDataBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${clearDataBytes.size} bytes), hex: ${clearDataBytes.toHexString()}")
     val macKeySpec = SecretKeySpec(macKey, "HmacSHA256")
     val mac = Mac.getInstance("HmacSHA256")
     mac.init(macKeySpec)
