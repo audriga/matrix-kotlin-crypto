@@ -3,9 +3,8 @@ import keybackup.CryptoInfoMapper
 import keybackup.JsonCanonicalizer
 import keybackup.MoshiProvider
 import keybackup.RestKeyInfo
-import keybackup.SecretStorageKeyContent
+//import keybackup.SecretStorageKeyContent
 import keybackup.SignalableMegolmBackupAuthData
-import keybackup.SsssKeyCreationInfo
 import keybackup.UploadSigningKeysBody
 import org.matrix.android.sdk.api.crypto.SSSS_ALGORITHM_AES_HMAC_SHA2
 import org.matrix.android.sdk.api.session.crypto.crosssigning.CryptoCrossSigningKey
@@ -15,9 +14,7 @@ import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_S
 import org.matrix.android.sdk.api.session.crypto.crosssigning.USER_SIGNING_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupAuthData
 import org.matrix.android.sdk.api.session.crypto.keysbackup.computeRecoveryKey
-import org.matrix.android.sdk.api.session.securestorage.EmptyKeySigner
 import org.matrix.android.sdk.api.session.securestorage.EncryptedSecretContent
-import org.matrix.android.sdk.api.session.securestorage.KeySigner
 import org.matrix.android.sdk.api.session.securestorage.RawBytesKeySpec
 import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
 import org.matrix.android.sdk.api.util.JsonDict
@@ -70,14 +67,15 @@ fun main() {
 }
 
 private fun bootstrapEncryption(rustOlmMachine: RustOmlMachine) {
-    scriptFile.writeText("""#!/usr/bin/env bash
+    scriptFile.writeText(
+        $$"""#!/usr/bin/env bash
         |
         |# Create the new user
-        |podman exec -it docker_synapse_1 register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml  -u $USER_ID_LOCAL_PART -p test
+        |podman exec -it docker_synapse_1 register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml  -u $$USER_ID_LOCAL_PART -p test
         |# Create the device
         |curl --request PUT \
-        | --url "http://ZetaHorologii:8008/_matrix/client/v3/devices/migDevice?user_id=$userId" \
-        | --header "Authorization: Bearer ${'$'}TOKEN_AS" \
+        | --url "http://ZetaHorologii:8008/_matrix/client/v3/devices/migDevice?user_id=$$userId" \
+        | --header "Authorization: Bearer $TOKEN_AS" \
         | -d '{
         |    "display_name": "Migration Worker"
         |  }'
@@ -107,17 +105,10 @@ private fun create4S(
     backupRecoveryKey: BackupRecoveryKey
 ) {
     // Create 4S key
-    val emptyKeySigner = EmptyKeySigner()// todo why does the element code use empty signer??
-//    object : KeySigner {
-//        override fun sign(canonicalJson: String): Map<String, Map<String, String>>? {
-//            TODO("Not yet implemented")
-//        }
-//    }
-    val (keyId, content, recoveryKey, keySpec) = generateKey(
+//    val emptyKeySigner = EmptyKeySigner()// todo why does the element code use empty signer??
+    val (keyId, recoveryKey, keySpec) = generateKey(
         UUID.randomUUID().toString(),
-        null, // params.keySpec,
-        "ssss_key",
-        emptyKeySigner
+        null // params.keySpec,
     )
     // Set default key
     updateUserAccountData(DEFAULT_KEY_ID, mapOf("key" to keyId))
@@ -127,7 +118,10 @@ private fun create4S(
     storeSecret(USER_SIGNING_KEY_SSSS_NAME, exportCrossSigningKeys.userSigningKey!!, keyId, keySpec)
     storeSecret(KEYBACKUP_SECRET_SSSS_NAME, backupRecoveryKey.toBase64(), keyId, keySpec)
 
-    println("Recovery Key: $recoveryKey")// todo: Element sais this key is not correct. Probably iv/ mac in the default key are set in a wrong way
+    val formattedRecoveryKey = recoveryKey.split("(?<=\\G....)".toRegex()).joinToString(" ")
+    println("Recovery Key: $formattedRecoveryKey")
+    scriptFile.appendText("\necho; echo \"Recovery Key: $formattedRecoveryKey\"\n")
+    scriptFile.setExecutable(true)
 }
 
 private fun createKeyBackupVersion(
@@ -355,12 +349,12 @@ private fun CreateKeysBackupVersionBody.toJsonString(): String {
 
 }
 
-private fun SecretStorageKeyContent.toJsonString(): String {
-    val moshi = MoshiProvider.providesMoshi()
-    return moshi
-        .adapter(SecretStorageKeyContent::class.java)
-        .toJson(this)
-}
+//private fun SecretStorageKeyContent.toJsonString(): String {
+//    val moshi = MoshiProvider.providesMoshi()
+//    return moshi
+//        .adapter(SecretStorageKeyContent::class.java)
+//        .toJson(this)
+//}
 
 // Copied internal function from MegolmBackupAuthData
 private fun MegolmBackupAuthData.toJsonDict(): JsonDict {
@@ -399,35 +393,16 @@ internal fun storeSecret(
 // Copied function from DefaultSharedSecretStorageService.kt (modified)
 internal fun generateKey(
     keyId: String,
-    key: SsssKeySpec?,
-    keyName: String,
-    keySigner: KeySigner?
-): SsssKeyCreationInfo {
+    key: SsssKeySpec?
+): Triple<String, String, RawBytesKeySpec> {
     println("======= Creating key $keyId ============")
         val bytes = (key as? RawBytesKeySpec)?.privateKey
             ?: ByteArray(32).also {
                 SecureRandom().nextBytes(it)
             }
 
-        val storageKeyContent = SecretStorageKeyContent(
-            name = keyName,
-            algorithm = SSSS_ALGORITHM_AES_HMAC_SHA2,
-            passphrase = null
-        )
-
-    val canonicalStorageKeyJson = storageKeyContent.canonicalSignable()
-//    val canonicalJson = JsonCanonicalizer.getCanonicalJson(
-//        Map::class.java,
-//        storageKeyContent.signalableJSONDictionary()
-//    )
-
-    val signedContent = keySigner?.sign(canonicalStorageKeyJson)?.let {
-            storageKeyContent.copy(
-                signatures = it
-            )
-        } ?: storageKeyContent
     val ssssKeySpec = RawBytesKeySpec(bytes)
-    val (iv, mac) = updateDefaultSecretStorageKey("$KEY_ID_BASE.$keyId", signedContent, ssssKeySpec)
+    val (iv, mac) = updateDefaultSecretStorageKey("$KEY_ID_BASE.$keyId", ssssKeySpec)
     val recoveryKey = computeRecoveryKey(bytes)
     println("Recovery Key: $recoveryKey")
 
@@ -446,27 +421,20 @@ internal fun generateKey(
         println("Verify recovery key does not work")
     }
 
-    return  SsssKeyCreationInfo(
-            keyId = keyId,
-            content = storageKeyContent,
-            recoveryKey = recoveryKey,
-            keySpec = ssssKeySpec
-        )
-
+    return Triple(keyId, recoveryKey, ssssKeySpec)
 }
 
-internal fun updateDefaultSecretStorageKey(type: String, content: SecretStorageKeyContent, ssssKeySpec: RawBytesKeySpec): Pair<String?, String?> {
-    // TODO For some reason I could not find evidence of the element app doing this?
+internal fun updateDefaultSecretStorageKey(type: String, ssssKeySpec: RawBytesKeySpec): Pair<String?, String?> {
+    // For some reason I could not find evidence of the element app doing this?
     //  But according to my spec understanding this should be done.
-    val empty = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
-//    val empty = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    val (_, mac, ephemeral, initializationVector) = encryptAesHmacSha2(
+    val zeroClearData = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
+    val (_, mac, _, initializationVector) = encryptAesHmacSha2(
         ssssKeySpec,
-        "",//todo empty string for step 1
-        empty // todo also 32 byte of 0, step 3
+        "",
+        zeroClearData
     )
     val uploadContent = mapOf(
-        "algorithm" to "${content.algorithm}",
+        "algorithm" to SSSS_ALGORITHM_AES_HMAC_SHA2,
         "iv" to "$initializationVector",
         "mac" to "$mac"
     )
@@ -474,7 +442,6 @@ internal fun updateDefaultSecretStorageKey(type: String, content: SecretStorageK
 
     updateUserAccountData(type, uploadContent)
 
-    // todo Test the key would verify!
     return Pair(initializationVector, mac)
 }
 
