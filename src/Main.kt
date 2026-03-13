@@ -1,6 +1,5 @@
 @file:Suppress("SameParameterValue")
 
-import org.matrix.android.sdk.api.crypto.MXCRYPTO_ALGORITHM_MEGOLM_BACKUP
 import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
@@ -124,7 +123,7 @@ const val eventAliceNewer = $$"""
 
 """
 //    val roomId = "!CkmkaydvMtvVXXukVn:ZetaHorologii" // Room ABC
-const val roomId = "!HQmlfpAoAHVOFZEvCg:ZetaHorologii" // Room Alice Self
+const val ROOM_ID = "!HQmlfpAoAHVOFZEvCg:ZetaHorologii" // Room Alice Self
 //    val sessionId = "06pJO2EEEkWxans9viRZllaagZQO/XV4K2/Iuz0RMTQ" // Bob megolm session in room ABC
 const val sessionId = "O7Vzimw4VRcMPBoDnYMr4ViP1PPzsVYz2yRf+ZDcYY0" // Alice megolm session in room Alice Self
 
@@ -143,7 +142,7 @@ fun main() {
     val (ssssPrivateKeySpec, decodedRecoveryKey) = decryptPoC(
         rustOlmMachine,
         aliceRecoveryKey,
-        roomId,
+        ROOM_ID,
         sessionId,
         eventAliceNewer
     )
@@ -151,7 +150,7 @@ fun main() {
 
 
 
-    encryptWithMegolmSession(rustOlmMachine, backupPublicKey, roomId)
+    encryptWithMegolmSession(rustOlmMachine, backupPublicKey, ROOM_ID)
 //    verifyDeviceWithDecryptedCrossSigningKeys(ssssPrivateKeySpec, rustOlmMachine)
     deleteDirectoryByPath(olmMachinePath)
 }
@@ -302,7 +301,7 @@ private fun decryptRoomEvent(rustOmlMachine: RustOmlMachine, roomId: String, eve
         strictShields = false,
         decryptionSettings = DecryptionSettings(TrustRequirement.UNTRUSTED)
     )
-    println(decryptedEvent.clearEvent)
+    println(decryptedEvent)
 
 //    //  I can decrypt the same event twice, which means the olmMachine is keeping track of previous states
 //    val (clearEvent2, _, _, _, _) = rustOmlMachine.decryptRoomEvent(

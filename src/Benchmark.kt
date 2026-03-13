@@ -23,7 +23,7 @@ fun main() {
             historyVisibility = HistoryVisibility.SHARED,
             errorOnVerifiedUserProblem = false,
         )
-        rustOlmMachine.shareRoomKey(roomId, listOf(), settings)
+        rustOlmMachine.shareRoomKey(ROOM_ID, listOf(), settings)
     }
     println("Time to init megolm session $timeTakenToInitOlmSession")
 
@@ -39,7 +39,7 @@ fun main() {
         val encryptedEvents = arrayOfNulls<String>(1000)
         for (i in 0..< 1000) {
             encryptedEvents[i] = rustOlmMachine.encrypt(
-                roomId,
+                ROOM_ID,
                 eventType,
                 content,)
         }
