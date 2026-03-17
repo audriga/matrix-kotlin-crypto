@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="matrix-kotlin-crypto-gradle:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/matrix_kotlin_crypto_gradle_jar</output-path>
+    <root id="archive" name="matrix-kotlin-crypto-gradle.jar">
+      <element id="module-output" name="matrix-kotlin-crypto-gradle.main" />
+      <element id="library" level="module" name="Gradle: matrix-android-sdk2-1.6.50.jar" module-name="matrix-kotlin-crypto-gradle.main" />
+      <element id="library" level="module" name="Gradle: crypto-android-26.1.28.jar" module-name="matrix-kotlin-crypto-gradle.main" />
+    </root>
+  </artifact>
+</component>

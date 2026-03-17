@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.3.0"
     id("com.google.devtools.ksp") version "2.3.5"
+//    id("com.gradleup.shadow") version "9.4.0" // needed for fat-jar
 }
 
 group = "org.audriga"
