@@ -1,25 +1,25 @@
 //import keybackup.SecretStorageKeyContent
+import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.MessageEncryptionUtils.Companion.defaultEncryptionSettings
 import org.audriga.matrix.crypto.SharedSecretStorage.Companion.encryptAesHmacSha2
-import keybackup.*
+import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.createKeyBackupVersionRequest
+import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.createKeyBackupVersionRequestJson
+import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.toJsonString
 import org.audriga.matrix.crypto.ssss.CrossSigningUtils.Companion.uploadCrossSigningKeysRequestToJson
-import org.matrix.android.sdk.api.crypto.SSSS_ALGORITHM_AES_HMAC_SHA2
+import org.audriga.matrix.crypto.ssss.SecretStorageKey.Companion.formatRecoveryKey
+import org.audriga.matrix.crypto.ssss.SecretStorageKey.Companion.generateSecretStorageKey
+import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.DEFAULT_KEY_ID
+import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.KEY_ID_BASE
+import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.createSecretStorageKeyVerificationInfo
+import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.encryptKeyForAccountDataStorage
 import org.matrix.android.sdk.api.session.crypto.crosssigning.*
-import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupAuthData
-import org.matrix.android.sdk.api.session.crypto.keysbackup.computeRecoveryKey
-import org.matrix.android.sdk.api.session.securestorage.EncryptedSecretContent
 import org.matrix.android.sdk.api.session.securestorage.RawBytesKeySpec
 import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
-import org.matrix.android.sdk.api.util.JsonDict
 import org.matrix.rustcomponents.sdk.crypto.*
 import uniffi.matrix_sdk_crypto.LocalTrust
 import java.io.File
-import java.security.SecureRandom
 import java.util.*
-import javax.crypto.Cipher
-import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
-import kotlin.experimental.and
 import kotlin.io.encoding.Base64
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
 
@@ -38,8 +38,6 @@ private const val URI_API_PREFIX_PATH_V3 = "$URI_API_PREFIX_PATH/v3/"
 private const val USER_DEVICE_QUERY_PARAMETERS = "?user_id=$USER_ID&device_id=$DEVICE_ID"
 private const val CURL_HEADERS = $$" --header \"Authorization: Bearer $TOKEN_AS\" \\\n" +
         " --header 'Content-Type: application/json'"
-private const val KEY_ID_BASE = "m.secret_storage.key"
-private const val DEFAULT_KEY_ID = "m.secret_storage.default_key"
 private const val SCRIPT_PATH = "/tmp/"
 private val scriptFile1 = File(SCRIPT_PATH+"setupSSSS.sh")
 private val scriptFile2 = File(SCRIPT_PATH+"postEncryptedMsg.sh")
@@ -108,7 +106,7 @@ private fun bootstrapEncryption(rustOlmMachine: RustOmlMachine) {
 }
 
 private fun prettyPrintRecoveryKey(recoveryKey: String) {
-    val formattedRecoveryKey = recoveryKey.split("(?<=\\G....)".toRegex()).joinToString(" ")
+    val formattedRecoveryKey = recoveryKey.formatRecoveryKey()
 
     println("Recovery Key: $formattedRecoveryKey")
     scriptFile1.appendText("\necho; echo \"Recovery Key: $formattedRecoveryKey\"\n")
@@ -147,45 +145,7 @@ private fun createKeyBackupVersion(
     println("PublicKey: $publicKey")
 //    rustOlmMachine.sign()
 
-    val backupAuthData = SignalableMegolmBackupAuthData(
-        publicKey = publicKey.publicKey,
-        privateKeySalt = publicKey.passphraseInfo?.privateKeySalt,
-        privateKeyIterations = publicKey.passphraseInfo?.privateKeyIterations
-    )
-    val canonicalJson = JsonCanonicalizer.getCanonicalJson(
-        Map::class.java,
-        backupAuthData.signalableJSONDictionary()
-    )
-    println("Canonicalized Backup Auth Data:\n$canonicalJson\n-")
-
-    val signedMegolmBackupAuthData = MegolmBackupAuthData(
-        publicKey = backupAuthData.publicKey,
-        privateKeySalt = backupAuthData.privateKeySalt,
-        privateKeyIterations = backupAuthData.privateKeyIterations,
-        signatures = rustOlmMachine.sign(canonicalJson)
-    )
-
-
-//    MegolmBackupCreationInfo(
-//        algorithm = publicKey.backupAlgorithm,
-//        authData = signedMegolmBackupAuthData,
-//        recoveryKey = backupRecoveryKey
-//    )
-//
-//    val keyBackupVersion = KeysVersionResult(
-//        algorithm = createKeysBackupVersionBody.algorithm,
-//        authData = createKeysBackupVersionBody.authData,
-//        version = "1",
-//        // We can assume that the server does not have keys yet
-//        count = 0,
-//        hash = ""
-//    )
-
-    val createKeysBackupVersionBody = CreateKeysBackupVersionBody(
-        algorithm = publicKey.backupAlgorithm,
-        authData = signedMegolmBackupAuthData.toJsonDict()
-    )
-
+    val createKeysBackupVersionBody = createKeyBackupVersionRequest(publicKey, rustOlmMachine)
     val keyBackupVersionBodyJson = createKeysBackupVersionBody.toJsonString()
     //     @POST(NetworkConstants.URI_API_PREFIX_PATH_UNSTABLE + "room_keys/version")
     //    suspend fun createKeysBackupVersion(@Body createKeysBackupVersionBody: CreateKeysBackupVersionBody): KeysVersion
@@ -239,16 +199,10 @@ private fun createKeyBackupVersion(
     rustOlmMachine.enableBackupV1(publicKey, "1")
 }
 
+
 private fun createMegolmSessionAndEncryptMessage(rustOlmMachine: RustOmlMachine, roomId: String) {
     val users = listOf("@alice:$HOMESERVER", "@bob:$HOMESERVER", "foo")
-    val settings = EncryptionSettings(
-        algorithm = EventEncryptionAlgorithm.MEGOLM_V1_AES_SHA2,
-        onlyAllowTrustedDevices = true,
-        rotationPeriod = 604800000.toULong(),
-        rotationPeriodMsgs = 100.toULong(),
-        historyVisibility = HistoryVisibility.SHARED,
-        errorOnVerifiedUserProblem = false,
-    )
+    val settings = defaultEncryptionSettings()
     rustOlmMachine.getMissingSessions(users)
     rustOlmMachine.setLocalTrust(USER_ID, DEVICE_ID, LocalTrust.VERIFIED)
     val device = rustOlmMachine.getDevice(rustOlmMachine.userId(), rustOlmMachine.deviceId(), 30u)
@@ -394,19 +348,6 @@ private fun uploadSignatures(signaturesBody: String) {
 }
 
 
-private fun CreateKeysBackupVersionBody.toJsonString(): String {
-    val moshi = MoshiProvider.providesMoshi()
-//    val adapter = moshi.adapter(Map::class.java)
-
-    return moshi
-        .adapter(CreateKeysBackupVersionBody::class.java)
-        .toJson(this)
-//        .let {
-//            @Suppress("UNCHECKED_CAST")
-//            adapter.fromJson(it) as JsonDict
-//        }
-
-}
 
 //private fun SecretStorageKeyContent.toJsonString(): String {
 //    val moshi = MoshiProvider.providesMoshi()
@@ -415,19 +356,6 @@ private fun CreateKeysBackupVersionBody.toJsonString(): String {
 //        .toJson(this)
 //}
 
-// Copied internal function from MegolmBackupAuthData
-private fun MegolmBackupAuthData.toJsonDict(): JsonDict {
-    val moshi = MoshiProvider.providesMoshi()
-    val adapter = moshi.adapter(Map::class.java)
-
-    return moshi
-        .adapter(MegolmBackupAuthData::class.java)
-        .toJson(this)
-        .let {
-            @Suppress("UNCHECKED_CAST")
-            adapter.fromJson(it) as JsonDict
-        }
-}
 
 
 // Copied function from DefaultSharedSecretStorageService.kt
@@ -436,13 +364,10 @@ internal fun storeSecret(
     secretBase64: String,
     keyId: String,
     ssssKeySpec: SsssKeySpec) {
-    val encryptedContents = HashMap<String, EncryptedSecretContent>()
-    encryptAesHmacSha2(ssssKeySpec, name, secretBase64).let {
-                        encryptedContents[keyId] = it
-                    }
+    val uploadContent = encryptKeyForAccountDataStorage(ssssKeySpec, name, secretBase64, keyId)
     updateUserAccountData(
         type = name,
-        uploadContent = mapOf("encrypted" to encryptedContents)
+        uploadContent = uploadContent
     )
 }
 
@@ -452,14 +377,8 @@ internal fun generateKey(
     key: SsssKeySpec?
 ): Triple<String, String, RawBytesKeySpec> {
     println("======= Creating key $keyId ============")
-        val bytes = (key as? RawBytesKeySpec)?.privateKey
-            ?: ByteArray(32).also {
-                SecureRandom().nextBytes(it)
-            }
-
-    val ssssKeySpec = RawBytesKeySpec(bytes)
+    val (ssssKeySpec, recoveryKey) = generateSecretStorageKey(key)
     val (iv, mac) = updateDefaultSecretStorageKey("$KEY_ID_BASE.$keyId", ssssKeySpec)
-    val recoveryKey = computeRecoveryKey(bytes)
     println("Recovery Key: $recoveryKey")
 
     // Trying to verify the key would decrypt correctly
@@ -483,18 +402,7 @@ internal fun generateKey(
 internal fun updateDefaultSecretStorageKey(type: String, ssssKeySpec: RawBytesKeySpec): Pair<String?, String?> {
     // For some reason I could not find evidence of the element app doing this?
     //  But according to my spec understanding this should be done.
-    val zeroClearData = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
-    val (_, mac, _, initializationVector) = encryptAesHmacSha2(
-        ssssKeySpec,
-        "",
-        zeroClearData
-    )
-    val uploadContent = mapOf(
-        "algorithm" to SSSS_ALGORITHM_AES_HMAC_SHA2,
-        "iv" to "$initializationVector",
-        "mac" to "$mac"
-    )
-
+    val (initializationVector, mac, uploadContent) = createSecretStorageKeyVerificationInfo(ssssKeySpec)
 
     updateUserAccountData(type, uploadContent)
 

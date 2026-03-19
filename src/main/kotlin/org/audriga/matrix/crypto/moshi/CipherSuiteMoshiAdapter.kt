@@ -1,5 +1,4 @@
-package keybackup
-/*
+package org.audriga.matrix.crypto.keybackup/*
  * Copyright 2020 The Matrix.org Foundation C.I.C.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,22 +13,22 @@ package keybackup
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//Copied from package org.matrix.android.sdk.internal.crypto.model.rest
 
-import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
+// Copied from package org.matrix.android.sdk.internal.network.parsing
 
-@JsonClass(generateAdapter = true)
-internal data class UploadSigningKeysBody(
-    @Json(name = "master_key")
-    val masterKey: RestKeyInfo? = null,
+import com.squareup.moshi.FromJson
+import com.squareup.moshi.ToJson
+import okhttp3.CipherSuite
 
-    @Json(name = "self_signing_key")
-    val selfSigningKey: RestKeyInfo? = null,
+internal class CipherSuiteMoshiAdapter {
 
-    @Json(name = "user_signing_key")
-    val userSigningKey: RestKeyInfo? = null,
+    @ToJson
+    fun toJson(cipherSuite: CipherSuite): String {
+        return cipherSuite.javaName
+    }
 
-    @Json(name = "auth")
-    val auth: Map<String, *>? = null
-)
+    @FromJson
+    fun fromJson(cipherSuiteString: String): CipherSuite {
+        return CipherSuite.forJavaName(cipherSuiteString)
+    }
+}

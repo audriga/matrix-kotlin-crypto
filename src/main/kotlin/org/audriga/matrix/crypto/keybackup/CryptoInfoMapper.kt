@@ -1,4 +1,4 @@
-package keybackup
+package org.audriga.matrix.crypto.keybackup
 /*
  * Copyright 2020 The Matrix.org Foundation C.I.C.
  *

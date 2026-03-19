@@ -1,4 +1,4 @@
-package keybackup/*
+package org.audriga.matrix.crypto.keybackup/*
  * Copyright 2020 The Matrix.org Foundation C.I.C.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +16,7 @@ package keybackup/*
 
 //Copied from package org.matrix.android.sdk.internal.crypto.keysbackup.model.rest
 
+import keybackup.MoshiProvider
 import org.matrix.android.sdk.api.crypto.MXCRYPTO_ALGORITHM_MEGOLM_BACKUP
 import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupAuthData
 import org.matrix.android.sdk.api.util.JsonDict

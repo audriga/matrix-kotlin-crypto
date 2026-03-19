@@ -1,9 +1,9 @@
 package org.audriga.matrix.crypto.ssss
 
-import keybackup.CryptoInfoMapper
 import keybackup.MoshiProvider
-import keybackup.RestKeyInfo
-import keybackup.UploadSigningKeysBody
+import org.audriga.matrix.crypto.keybackup.CryptoInfoMapper
+import org.audriga.matrix.crypto.keybackup.RestKeyInfo
+import org.audriga.matrix.crypto.keybackup.UploadSigningKeysBody
 import org.matrix.android.sdk.api.session.crypto.crosssigning.CryptoCrossSigningKey
 import org.matrix.rustcomponents.sdk.crypto.UploadSigningKeysRequest
 
@@ -13,6 +13,7 @@ class CrossSigningUtils {
             return CryptoInfoMapper.map(this)
         }
 
+        @JvmStatic
         fun uploadCrossSigningKeysRequestToJson(uploadSigningKeysRequest: UploadSigningKeysRequest): String? {
 //        UploadSigningKeysBody(
 //            masterKey = params.masterKey.toRest(),

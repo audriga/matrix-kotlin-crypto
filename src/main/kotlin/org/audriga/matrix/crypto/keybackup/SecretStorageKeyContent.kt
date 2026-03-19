@@ -1,4 +1,4 @@
-package keybackup
+package org.audriga.matrix.crypto.keybackup
 /*
  * Copyright 2020 The Matrix.org Foundation C.I.C.
  *
@@ -19,6 +19,7 @@ package keybackup
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import keybackup.MoshiProvider
 
 /**
  *

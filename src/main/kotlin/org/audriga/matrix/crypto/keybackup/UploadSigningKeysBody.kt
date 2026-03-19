@@ -1,4 +1,5 @@
-package keybackup/*
+package org.audriga.matrix.crypto.keybackup
+/*
  * Copyright 2020 The Matrix.org Foundation C.I.C.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,22 +14,22 @@ package keybackup/*
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+//Copied from package org.matrix.android.sdk.internal.crypto.model.rest
 
-// Copied from package org.matrix.android.sdk.internal.network.parsing
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
-import com.squareup.moshi.FromJson
-import com.squareup.moshi.ToJson
-import okhttp3.TlsVersion
+@JsonClass(generateAdapter = true)
+internal data class UploadSigningKeysBody(
+    @Json(name = "master_key")
+    val masterKey: RestKeyInfo? = null,
 
-internal class TlsVersionMoshiAdapter {
+    @Json(name = "self_signing_key")
+    val selfSigningKey: RestKeyInfo? = null,
 
-    @ToJson
-    fun toJson(tlsVersion: TlsVersion): String {
-        return tlsVersion.javaName
-    }
+    @Json(name = "user_signing_key")
+    val userSigningKey: RestKeyInfo? = null,
 
-    @FromJson
-    fun fromJson(tlsVersionString: String): TlsVersion {
-        return TlsVersion.forJavaName(tlsVersionString)
-    }
-}
+    @Json(name = "auth")
+    val auth: Map<String, *>? = null
+)

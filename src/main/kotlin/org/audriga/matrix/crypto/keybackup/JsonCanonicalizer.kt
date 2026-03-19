@@ -1,4 +1,5 @@
-package keybackup//import androidx.annotation.VisibleForTesting
+package org.audriga.matrix.crypto.keybackup//import androidx.annotation.VisibleForTesting
+import keybackup.MoshiProvider
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject

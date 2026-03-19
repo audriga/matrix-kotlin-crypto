@@ -1,15 +1,11 @@
-package keybackup
-
-import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
-
-/*
+package org.audriga.matrix.crypto.keybackup/*
  * Copyright 2020 The Matrix.org Foundation C.I.C.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,11 +14,21 @@ import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
  * limitations under the License.
  */
 
-//Copied from package org.matrix.android.sdk.api.session.securestorage to use own SecretStorageKeyContent
+// Copied from package org.matrix.android.sdk.internal.network.parsing
 
-data class SsssKeyCreationInfo(
-    val keyId: String = "",
-    val content: SecretStorageKeyContent?,
-    val recoveryKey: String = "",
-    val keySpec: SsssKeySpec
-)
+import com.squareup.moshi.FromJson
+import com.squareup.moshi.ToJson
+import okhttp3.TlsVersion
+
+internal class TlsVersionMoshiAdapter {
+
+    @ToJson
+    fun toJson(tlsVersion: TlsVersion): String {
+        return tlsVersion.javaName
+    }
+
+    @FromJson
+    fun fromJson(tlsVersionString: String): TlsVersion {
+        return TlsVersion.forJavaName(tlsVersionString)
+    }
+}

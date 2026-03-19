@@ -1,4 +1,4 @@
-package keybackup
+package org.audriga.matrix.crypto.keybackup
 
 import org.matrix.android.sdk.api.util.JsonDict
 
