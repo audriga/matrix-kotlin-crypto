@@ -9,7 +9,7 @@ class MessageEncryptionUtils {
         @JvmStatic
         fun defaultEncryptionSettings(): EncryptionSettings =  EncryptionSettings(
             algorithm = EventEncryptionAlgorithm.MEGOLM_V1_AES_SHA2,
-            onlyAllowTrustedDevices = true,
+            onlyAllowTrustedDevices = false,
             rotationPeriod = 604800000.toULong(),
             rotationPeriodMsgs = 100.toULong(),
             historyVisibility = HistoryVisibility.SHARED,

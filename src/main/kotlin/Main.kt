@@ -1,5 +1,7 @@
 @file:Suppress("SameParameterValue")
 
+import DemoUtils.Companion.createExampleEncryptedEvent
+import org.audriga.matrix.crypto.MessageEncryptionUtils.Companion.defaultEncryptionSettings
 import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
@@ -240,30 +242,8 @@ private fun encryptWithMegolmSession(
     // todo: Not sure why missingSessions always returns null, and shareRoomKey always returns [],
     //  no matter which list of users I supply
     // Via PrepareToEncryptUseCase.kt / CryptoRoomInfo.kt
-    val settings = EncryptionSettings(
-        algorithm = EventEncryptionAlgorithm.MEGOLM_V1_AES_SHA2,
-        onlyAllowTrustedDevices = true,
-        rotationPeriod = 604800000.toULong(),
-        rotationPeriodMsgs = 100.toULong(),
-        historyVisibility = HistoryVisibility.SHARED,
-        errorOnVerifiedUserProblem = false,
-    )
-    val shareRoomKeyRequests = rustOlmMachine.shareRoomKey(roomId, users, settings)
 
-    println(shareRoomKeyRequests)
-    // Returns error "Session wasn't created nor shared", if shareRoomKey was not previously called.
-//    rustOlmMachine.receiveSyncChanges()
-    val encryptedEvent = rustOlmMachine.encrypt(
-        roomId,
-        "m.room.message",
-        """
-            {
-             "msgtype": "m.text",
-             "body": "Encrypted hi from API"
-            }
-        """.trimIndent(),
-    )
-    println(encryptedEvent)
+    createExampleEncryptedEvent(rustOlmMachine, roomId, users)
     rustOlmMachine.enableBackupV1(backupPublicKey1, "1")
     val backupRoomKeys = rustOlmMachine.backupRoomKeys()
     println(backupRoomKeys)

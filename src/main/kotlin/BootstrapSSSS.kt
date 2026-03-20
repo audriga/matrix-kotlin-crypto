@@ -1,9 +1,8 @@
 //import keybackup.SecretStorageKeyContent
+import DemoUtils.Companion.createExampleEncryptedEvent
 import keybackup.MoshiProvider
-import org.audriga.matrix.crypto.MessageEncryptionUtils.Companion.defaultEncryptionSettings
 import org.audriga.matrix.crypto.SharedSecretStorage.Companion.encryptAesHmacSha2
 import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.createKeyBackupVersionRequest
-import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.createKeyBackupVersionRequestJson
 import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.toJsonString
 import org.audriga.matrix.crypto.ssss.CrossSigningUtils.Companion.uploadCrossSigningKeysRequestToJson
 import org.audriga.matrix.crypto.ssss.SecretStorageKey.Companion.formatRecoveryKey
@@ -12,7 +11,10 @@ import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.DEFAULT_KEY
 import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.KEY_ID_BASE
 import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.createSecretStorageKeyVerificationInfo
 import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.encryptKeyForAccountDataStorage
-import org.matrix.android.sdk.api.session.crypto.crosssigning.*
+import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_SSSS_NAME
+import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
+import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
+import org.matrix.android.sdk.api.session.crypto.crosssigning.USER_SIGNING_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.securestorage.RawBytesKeySpec
 import org.matrix.android.sdk.api.session.securestorage.SsssKeySpec
 import org.matrix.rustcomponents.sdk.crypto.*
@@ -86,6 +88,7 @@ private fun bootstrapEncryption(rustOlmMachine: RustOmlMachine) {
 
     val bootstrapCrossSigningResult = rustOlmMachine.bootstrapCrossSigning()
     crossSigningUploadRequests(bootstrapCrossSigningResult)
+    rustOlmMachine.outgoingRequests().forEach { println("Request: $it ${it.javaClass}") }
     // Todo maybe I need to mark the three key requests as sent? rustOlmMachine.markRequestAsSent(bootstrapCrossSigningResult.uploadKeysRequest.requestId)
     println(rustOlmMachine.crossSigningStatus())
     val exportCrossSigningKeys = rustOlmMachine.exportCrossSigningKeys()!!
@@ -93,7 +96,6 @@ private fun bootstrapEncryption(rustOlmMachine: RustOmlMachine) {
 //    val wrappedBackupRecoveryKey = org.matrix.android.sdk.api.session.crypto.keysbackup.BackupRecoveryKey()
     val backupRecoveryKey = BackupRecoveryKey()
     createKeyBackupVersion(backupRecoveryKey, rustOlmMachine)
-
     val recoveryKey = create4S(exportCrossSigningKeys, backupRecoveryKey)
 
     prettyPrintRecoveryKey(recoveryKey)
@@ -202,30 +204,13 @@ private fun createKeyBackupVersion(
 
 private fun createMegolmSessionAndEncryptMessage(rustOlmMachine: RustOmlMachine, roomId: String) {
     val users = listOf("@alice:$HOMESERVER", "@bob:$HOMESERVER", "foo")
-    val settings = defaultEncryptionSettings()
     rustOlmMachine.getMissingSessions(users)
     rustOlmMachine.setLocalTrust(USER_ID, DEVICE_ID, LocalTrust.VERIFIED)
     val device = rustOlmMachine.getDevice(rustOlmMachine.userId(), rustOlmMachine.deviceId(), 30u)
     println("Device: $device\n...locally trusted: ${device?.locallyTrusted}")
 
 
-    val shareRoomKeyRequests = rustOlmMachine.shareRoomKey(roomId, users, settings)
-    // todo this is empty, no matter what I supply as users
-    println(shareRoomKeyRequests)
-
-
-    val encryptedEvent = rustOlmMachine.encrypt(
-        roomId,
-        "m.room.message",
-        """
-            {
-             "msgtype": "m.text",
-             "body": "Encrypted hi from API"
-            }
-        """.trimIndent(),
-    )
-//    rustOlmMachine.sign(encryptedEvent)
-    println("Encrypted Event:\n$encryptedEvent")
+    val encryptedEvent = createExampleEncryptedEvent(rustOlmMachine, roomId, users)
     uploadEncryptedEvent(roomId,encryptedEvent)
 //    rustOlmMachine.verifyIdentity() TODO for other user's identities. Probably need to first import that users megolm session/ public x-signing master key? but how?
 //    rustOlmMachine.importDecryptedRoomKeys()
