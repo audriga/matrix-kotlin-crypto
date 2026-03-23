@@ -1,3 +1,5 @@
+package org.audriga.matrix.crypto
+
 import kotlin.io.encoding.Base64
 
 // Replaces the extension function used by the top level matrix library, since

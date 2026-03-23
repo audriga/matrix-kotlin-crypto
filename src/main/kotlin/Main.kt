@@ -2,6 +2,7 @@
 
 import DemoUtils.Companion.createExampleEncryptedEvent
 import org.audriga.matrix.crypto.MessageEncryptionUtils.Companion.defaultEncryptionSettings
+import org.audriga.matrix.crypto.SharedSecretStorage.Companion.decryptAesHmacSha2
 import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
@@ -351,7 +352,7 @@ private fun decryptSampleMegolmSession(decodedRecoveryKey: BackupRecoveryKey): S
         ciphertext = "zmOBVT1qSnMchjOerYHG8YAPa7tEGna4PQ+scmFoleolTRMPEQ/D7bdyJVJ0LGtPGV3j6P1TdUvCttAKGQxisn02ZiorNbOjeqfcyNqHlZuoAYL2DI54bkzEfN+Ebg0GkS6vZyXvbKeQxT0B/Ob6Zozep1zUqfeiMO9eAs1SjJbrIXtGA1O4c0hIym9WSYf55PC/ASLq2TTcnWp9hLiFnRlOZqztiEaI6vhIh1tGfO0yLleggdRX+aaSUlilADp9IGhXYQQV9Q0e/kZcKGl6eQQs7Zc3GJ678IZdIVSyRMLVITsF10wdPOZJ2h/bekKilq2xOOXwPpQh9n0EUKMjSCkXGRN5V27a8+//eXMseAfpNXW96SAJSiwwlz+d3t9A6AX7ye2QYDcdDwNVFIaqdrOQVlbONIVZMpeYJfeeDkWDIun1WLGUtbEWERE7LWwk29d4dTNsrm8jTStA98DAzk8UsMqkcv45jdDwHfeNXOeTTqQR4PrIxgS/Wu31Ox8e0dhCS7Cn1aIdxPExqIkuazVwxWwNHUlrBNx/cbl7AtkRYEyuEgegmtx23FIBABhDXlQ1Gxd6jEeLkV+hXuNI2twCATerF2b9lUhM+METOm25s5pGsW4e5qfVqIDAClkRPHA8xgYL7H8tb48ICazrOg"
     )
 
-    println(decryptedMegolmSession)
+    println("DecryptedMegolmSession: $decryptedMegolmSession")
     // Note, when matrix-android-sdk2 internally decrypts a Megolm session,
     // it parses it to a SessionData object (see copied code snippet below).
     // However, we cannot do this here without copying the relevant classes, since these classes are internal.

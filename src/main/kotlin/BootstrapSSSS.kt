@@ -1,6 +1,7 @@
 //import keybackup.SecretStorageKeyContent
 import DemoUtils.Companion.createExampleEncryptedEvent
 import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.SharedSecretStorage.Companion.checkRecoveryKey
 import org.audriga.matrix.crypto.SharedSecretStorage.Companion.encryptAesHmacSha2
 import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.createKeyBackupVersionRequest
 import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.toJsonString
@@ -11,6 +12,7 @@ import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.DEFAULT_KEY
 import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.KEY_ID_BASE
 import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.createSecretStorageKeyVerificationInfo
 import org.audriga.matrix.crypto.ssss.SecretStorageService.Companion.encryptKeyForAccountDataStorage
+import org.matrix.android.sdk.api.crypto.SSSS_ALGORITHM_AES_HMAC_SHA2
 import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
@@ -368,14 +370,8 @@ internal fun generateKey(
 
     // Trying to verify the key would decrypt correctly
     val decodedSpec = RawBytesKeySpec.fromRecoveryKey(recoveryKey)!!
-    val empty = ByteArray(32) { 0.toByte() }.toString(Charsets.UTF_8) // initialized to zero
-    val (_, mac1, _, _) = encryptAesHmacSha2(
-        decodedSpec,
-        "",
-        empty,
-        IvParameterSpec( Base64.withPadding(Base64.PaddingOption.ABSENT).decode(iv!!))
-    )
-    if (mac.equals(mac1)) {
+    val recoveryKeyCorrect = checkRecoveryKey(decodedSpec, SSSS_ALGORITHM_AES_HMAC_SHA2, iv, mac)
+    if (recoveryKeyCorrect) {
         println("Verify recovery key works")
     } else{
         println("Verify recovery key does not work")
