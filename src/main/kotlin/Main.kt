@@ -2,7 +2,9 @@
 
 import DemoUtils.Companion.createExampleEncryptedEvent
 import org.audriga.matrix.crypto.MessageEncryptionUtils.Companion.defaultEncryptionSettings
+import org.audriga.matrix.crypto.SharedSecretStorage
 import org.audriga.matrix.crypto.SharedSecretStorage.Companion.decryptAesHmacSha2
+import org.audriga.matrix.crypto.keybackup.SecretStorageKeyContent
 import org.matrix.android.sdk.api.session.crypto.crosssigning.KEYBACKUP_SECRET_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.MASTER_KEY_SSSS_NAME
 import org.matrix.android.sdk.api.session.crypto.crosssigning.SELF_SIGNING_KEY_SSSS_NAME
@@ -259,6 +261,13 @@ private fun decryptPoC(
     ): Pair<RawBytesKeySpec, BackupRecoveryKey> {
     val ssssPrivateKeySpec = decodeSSSSRecoveryKey(recoveryKey)
 
+    val checkRecoveryKey = SharedSecretStorage.checkRecoveryKey(
+        ssssPrivateKeySpec,
+        "m.secret_storage.v1.aes-hmac-sha2",
+        "xwTnpUIU/Vt5ckG2Zhbx0Q==",
+        "jq7iiDiyOWTDR1F8ps2jcx7QiASqOlCdTNJqiNGl+KU="
+    )
+    println("Recovery key check: $checkRecoveryKey")
     val decodedRecoveryKey = decryptAliceMegolmBackupKey(ssssPrivateKeySpec)
     val decryptedMegolmSession = decryptSampleMegolmSession(decodedRecoveryKey)
 

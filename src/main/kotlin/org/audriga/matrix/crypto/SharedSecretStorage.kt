@@ -96,7 +96,7 @@ class SharedSecretStorage {
                 empty,
                 IvParameterSpec(Base64.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).decode(iv!!))
             )
-            val recoveryKeyCorrect = mac.equals(mac1)
+            val recoveryKeyCorrect = mac?.replace("=", "").equals(mac1)
             return recoveryKeyCorrect
         }
 
