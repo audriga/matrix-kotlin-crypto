@@ -48,10 +48,12 @@ object MXEncryptedAttachments {
     fun encrypt(
         clearStream: InputStream,
         outputFile: File,
-        clock: Clock,
+        clock: Clock?,
         progress: ((current: Int, total: Int) -> Unit)
     ): EncryptedFileInfo {
-        val t0 = clock.now().toEpochMilliseconds()
+        val clockVar = clock ?: Clock.System
+
+        val t0 = clockVar.now().toEpochMilliseconds()
         val (initVectorBytes, key) = generateIvAndKey()
 
         val messageDigest = MessageDigest.getInstance(MESSAGE_DIGEST_ALGORITHM)
@@ -99,7 +101,7 @@ object MXEncryptedAttachments {
             hashes = mapOf("sha256" to messageDigest.digest().toBase64NoPadding()),
             v = "v2"
         )
-            .also { mLogger.log(Level.INFO, "Encrypt in ${clock.now().toEpochMilliseconds() - t0}ms") }
+            .also { mLogger.log(Level.INFO, "Encrypt in ${clockVar.now().toEpochMilliseconds() - t0}ms") }
     }
 
 
