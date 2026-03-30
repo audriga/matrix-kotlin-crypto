@@ -5,6 +5,8 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.util.TreeSet
 import kotlin.collections.iterator
+import java.util.logging.Level
+import java.util.logging.Logger
 
 // Copied from package org.matrix.android.sdk.internal.util
 /**
@@ -12,6 +14,7 @@ import kotlin.collections.iterator
  * Doc: https://matrix.org/docs/spec/appendices.html#canonical-json
  */
 internal object JsonCanonicalizer {
+    private val mLogger = Logger.getLogger(JsonCanonicalizer::class.java.name)
 
     fun <T> getCanonicalJson(type: Class<T>, o: T): String {
         val adapter = MoshiProvider.providesMoshi().adapter<T>(type)
@@ -28,7 +31,7 @@ internal object JsonCanonicalizer {
 
             canonicalizeRecursive(jsonObject)
         } catch (e: JSONException) {
-//            Timber.e(e, "Unable to canonicalize")
+            mLogger.log(Level.WARNING, "Unable to canonicalize", e)
             jsonString
         }
     }

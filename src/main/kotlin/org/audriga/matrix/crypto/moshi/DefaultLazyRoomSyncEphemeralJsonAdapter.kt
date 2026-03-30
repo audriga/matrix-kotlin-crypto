@@ -23,10 +23,12 @@ import com.squareup.moshi.JsonWriter
 import com.squareup.moshi.ToJson
 import org.matrix.android.sdk.api.session.sync.model.LazyRoomSyncEphemeral
 import org.matrix.android.sdk.api.session.sync.model.RoomSyncEphemeral
+import java.util.logging.Level
+import java.util.logging.Logger
 //import RoomSyncEphemeralTemporaryStore
-//import timber.log.Timber
 
 internal class DefaultLazyRoomSyncEphemeralJsonAdapter {
+    private val mLogger = Logger.getLogger(DefaultLazyRoomSyncEphemeralJsonAdapter::class.java.name)
 
     @FromJson
     fun fromJson(reader: JsonReader, delegate: JsonAdapter<RoomSyncEphemeral>): LazyRoomSyncEphemeral? {
@@ -37,7 +39,7 @@ internal class DefaultLazyRoomSyncEphemeralJsonAdapter {
     @ToJson
     fun toJson(writer: JsonWriter, value: LazyRoomSyncEphemeral?) {
         // This Adapter is not supposed to serialize object
-//        Timber.v("To json $value with $writer")
+        mLogger.log(Level.INFO, "To json $value with $writer")
         throw UnsupportedOperationException()
     }
 }

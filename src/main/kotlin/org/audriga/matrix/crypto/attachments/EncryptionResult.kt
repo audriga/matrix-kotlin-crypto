@@ -22,7 +22,7 @@ import org.matrix.android.sdk.api.session.crypto.model.EncryptedFileInfo
 /**
  * Define the result of an encryption file.
  */
-internal data class EncryptionResult(
+data class EncryptionResult(
     val encryptedFileInfo: EncryptedFileInfo,
     val encryptedByteArray: ByteArray
 ) {

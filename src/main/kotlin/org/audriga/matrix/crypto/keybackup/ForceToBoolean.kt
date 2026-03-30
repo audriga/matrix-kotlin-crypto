@@ -20,6 +20,8 @@ import com.squareup.moshi.FromJson
 import com.squareup.moshi.JsonQualifier
 import com.squareup.moshi.JsonReader
 import com.squareup.moshi.ToJson
+import java.util.logging.Level
+import java.util.logging.Logger
 
 @JsonQualifier
 @Retention(AnnotationRetention.RUNTIME)
@@ -27,6 +29,7 @@ import com.squareup.moshi.ToJson
 internal annotation class ForceToBoolean
 
 internal class ForceToBooleanJsonAdapter {
+    private val mLogger = Logger.getLogger(ForceToBooleanJsonAdapter::class.java.name)
     @ToJson
     fun toJson(@ForceToBoolean b: Boolean): Boolean {
         return b
@@ -39,7 +42,7 @@ internal class ForceToBooleanJsonAdapter {
             JsonReader.Token.NUMBER -> reader.nextInt() != 0
             JsonReader.Token.BOOLEAN -> reader.nextBoolean()
             else -> {
-//                Timber.e("Expecting a boolean or a int but get: $token")
+                 mLogger.log(Level.WARNING, "Expecting a boolean or a int but get: $token")
                 reader.skipValue()
                 false
             }

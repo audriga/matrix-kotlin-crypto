@@ -5,9 +5,12 @@ import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupAuthData
 import org.matrix.android.sdk.api.util.JsonDict
 import org.matrix.rustcomponents.sdk.crypto.MegolmV1BackupKey
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
+import java.util.logging.Level
+import java.util.logging.Logger
 
 class KeyBackupService {
     companion object {
+        private val mLogger = Logger.getLogger(KeyBackupService::class.java.name)
         internal fun CreateKeysBackupVersionBody.toJsonString(): String {
             val moshi = MoshiProvider.providesMoshi()
 //    val adapter = moshi.adapter(Map::class.java)
@@ -57,7 +60,7 @@ class KeyBackupService {
                 Map::class.java,
                 backupAuthData.signalableJSONDictionary()
             )
-            println("Canonicalized Backup Auth Data:\n$canonicalJson\n-")
+             mLogger.log(Level.FINEST,"Canonicalized Backup Auth Data:\n$canonicalJson\n-")
 
             val signedMegolmBackupAuthData = MegolmBackupAuthData(
                 publicKey = backupAuthData.publicKey,

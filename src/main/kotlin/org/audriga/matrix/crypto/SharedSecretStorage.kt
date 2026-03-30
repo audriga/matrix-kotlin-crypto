@@ -14,9 +14,12 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.experimental.and
 import kotlin.io.encoding.Base64
+import java.util.logging.Level
+import java.util.logging.Logger
 
 class SharedSecretStorage {
     companion object {
+        private val mLogger = Logger.getLogger(SharedSecretStorage::class.java.name)
 
         //Copied from DefaultSharedSecretStorageService
         @Throws
@@ -29,7 +32,7 @@ class SharedSecretStorage {
             secretKey as RawBytesKeySpec
             val secretNameBytes = secretName.toByteArray()
             val privateKeyBytes = secretKey.privateKey
-            println("privateKeyBytes: ${privateKeyBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${privateKeyBytes.size} bytes), hex: ${privateKeyBytes.toHexString()}")
+            mLogger.log(Level.FINEST,"privateKeyBytes: ${privateKeyBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${privateKeyBytes.size} bytes), hex: ${privateKeyBytes.toHexString()}")
             val pseudoRandomKey = HkdfSha256.deriveSecret(
                 privateKeyBytes,
                 ByteArray(32) { 0.toByte() },
@@ -42,7 +45,7 @@ class SharedSecretStorage {
             val macKey = pseudoRandomKey.copyOfRange(32, 64)
 
 
-            println("aesKey = ${aesKey.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${aesKey.size} bytes), hex ${aesKey.toHexString()}\n" +
+            mLogger.log(Level.FINEST,"aesKey = ${aesKey.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${aesKey.size} bytes), hex ${aesKey.toHexString()}\n" +
                     "macKey = ${macKey.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${macKey.size} bytes), hex ${macKey.toHexString()}")
 
             val secureRandom = SecureRandom()
@@ -53,7 +56,7 @@ class SharedSecretStorage {
             // (which would mean we wouldn't be able to decrypt on Android). The loss
             // of a single bit of salt is a price we have to pay.
             iv[9] = iv[9] and 0x7f
-            println("Iv = ${iv.map { b -> b.toInt() and 0xFF}.joinToString(", ")} (${iv.size} bytes), hex ${iv.toHexString()}\n")
+            mLogger.log(Level.FINEST,"Iv = ${iv.map { b -> b.toInt() and 0xFF}.joinToString(", ")} (${iv.size} bytes), hex ${iv.toHexString()}\n")
 
             val cipher = Cipher.getInstance("AES/CTR/NoPadding")
 
@@ -65,8 +68,8 @@ class SharedSecretStorage {
             val cipherBytes = cipher.doFinal(clearDataBytes)
             require(cipherBytes.isNotEmpty())
 
-            println("SecretName: \"$secretName\", ${secretNameBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${secretNameBytes.size} bytes), hex: ${secretNameBytes.toHexString()}")
-            println("Plaintext: \"$clearDataBase64\", ${clearDataBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${clearDataBytes.size} bytes), hex: ${clearDataBytes.toHexString()}")
+            mLogger.log(Level.FINEST,"SecretName: \"$secretName\", ${secretNameBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${secretNameBytes.size} bytes), hex: ${secretNameBytes.toHexString()}")
+            mLogger.log(Level.FINEST,"Plaintext: \"$clearDataBase64\", ${clearDataBytes.map { b -> b.toInt() and 0xFF }.joinToString(", ")} (${clearDataBytes.size} bytes), hex: ${clearDataBytes.toHexString()}")
             val macKeySpec = SecretKeySpec(macKey, "HmacSHA256")
             val mac = Mac.getInstance("HmacSHA256")
             mac.init(macKeySpec)

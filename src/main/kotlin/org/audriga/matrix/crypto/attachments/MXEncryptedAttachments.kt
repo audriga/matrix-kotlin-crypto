@@ -22,26 +22,29 @@ import org.audriga.matrix.crypto.toBase64NoPadding
 import org.audriga.matrix.crypto.toBase64Url
 import org.matrix.android.sdk.api.session.crypto.model.EncryptedFileInfo
 import org.matrix.android.sdk.api.session.crypto.model.EncryptedFileKey
-//import timber.log.Timber // todo use replacement logging framework
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.logging.Level
+import java.util.logging.Logger
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 
 // Based on copy of from org.matrix.android.sdk.internal.crypto.attachments
-internal object MXEncryptedAttachments {
+object MXEncryptedAttachments {
+    private val mLogger = Logger.getLogger(MXEncryptedAttachments::class.java.name)
+
     private const val CRYPTO_BUFFER_SIZE = 32 * 1024
     private const val CIPHER_ALGORITHM = "AES/CTR/NoPadding"
     private const val SECRET_KEY_SPEC_ALGORITHM = "AES"
     private const val MESSAGE_DIGEST_ALGORITHM = "SHA-256"
 
+    @JvmStatic
     fun encrypt(
         clearStream: InputStream,
         outputFile: File,
@@ -49,16 +52,7 @@ internal object MXEncryptedAttachments {
         progress: ((current: Int, total: Int) -> Unit)
     ): EncryptedFileInfo {
         val t0 = clock.now().toEpochMilliseconds()
-        val secureRandom = SecureRandom()
-        val initVectorBytes = ByteArray(16) { 0.toByte() }
-
-        val ivRandomPart = ByteArray(8)
-        secureRandom.nextBytes(ivRandomPart)
-
-        System.arraycopy(ivRandomPart, 0, initVectorBytes, 0, ivRandomPart.size)
-
-        val key = ByteArray(32)
-        secureRandom.nextBytes(key)
+        val (initVectorBytes, key) = generateIvAndKey()
 
         val messageDigest = MessageDigest.getInstance(MESSAGE_DIGEST_ALGORITHM)
 
@@ -105,58 +99,9 @@ internal object MXEncryptedAttachments {
             hashes = mapOf("sha256" to messageDigest.digest().toBase64NoPadding()),
             v = "v2"
         )
-//            .also { Timber.v("Encrypt in ${clock.now().toEpochMilliseconds() - t0}ms") }
+            .also { mLogger.log(Level.INFO, "Encrypt in ${clock.now().toEpochMilliseconds() - t0}ms") }
     }
 
-//    fun cipherInputStream(attachmentStream: InputStream, mimetype: String?): Pair<DigestInputStream, EncryptedFileInfo> {
-//        val secureRandom = SecureRandom()
-//
-//        // generate a random iv key
-//        // Half of the IV is random, the lower order bits are zeroed
-//        // such that the counter never wraps.
-//        // See https://github.com/matrix-org/matrix-ios-kit/blob/3dc0d8e46b4deb6669ed44f72ad79be56471354c/MatrixKit/Models/Room/MXEncryptedAttachments.m#L75
-//        val initVectorBytes = ByteArray(16) { 0.toByte() }
-//
-//        val ivRandomPart = ByteArray(8)
-//        secureRandom.nextBytes(ivRandomPart)
-//
-//        System.arraycopy(ivRandomPart, 0, initVectorBytes, 0, ivRandomPart.size)
-//
-//        val key = ByteArray(32)
-//        secureRandom.nextBytes(key)
-//
-//        val encryptCipher = Cipher.getInstance(CIPHER_ALGORITHM)
-//        val secretKeySpec = SecretKeySpec(key, SECRET_KEY_SPEC_ALGORITHM)
-//        val ivParameterSpec = IvParameterSpec(initVectorBytes)
-//        encryptCipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec)
-//
-//        val cipherInputStream = CipherInputStream(attachmentStream, encryptCipher)
-//
-//        // Could it be possible to get the digest on the fly instead of
-//        val info = EncryptedFileInfo(
-//                url = null,
-//                mimetype = mimetype,
-//                key = EncryptedFileKey(
-//                        alg = "A256CTR",
-//                        ext = true,
-//                        key_ops = listOf("encrypt", "decrypt"),
-//                        kty = "oct",
-//                        k = base64ToBase64Url(Base64.encodeToString(key, Base64.DEFAULT))
-//                ),
-//                iv = Base64.encodeToString(initVectorBytes, Base64.DEFAULT).replace("\n", "").replace("=", ""),
-//                //hashes = mapOf("sha256" to base64ToUnpaddedBase64(Base64.encodeToString(messageDigest.digest(), Base64.DEFAULT))),
-//                v = "v2"
-//        )
-//
-//        val messageDigest = MessageDigest.getInstance(MESSAGE_DIGEST_ALGORITHM)
-//        return DigestInputStream(cipherInputStream, messageDigest) to info
-//    }
-//
-//    fun updateInfoWithDigest(digestInputStream: DigestInputStream, info: EncryptedFileInfo): EncryptedFileInfo {
-//        return info.copy(
-//                hashes = mapOf("sha256" to base64ToUnpaddedBase64(Base64.encodeToString(digestInputStream.messageDigest.digest(), Base64.DEFAULT)))
-//        )
-//    }
 
     /***
      * Encrypt an attachment stream.
@@ -165,23 +110,10 @@ internal object MXEncryptedAttachments {
      * @param clock a clock to retrieve current time
      * @return the encryption file info
      */
+    @JvmStatic
     fun encryptAttachment(attachmentStream: InputStream, clock: Clock): EncryptionResult {
         val t0 = clock.now().toEpochMilliseconds()
-        val secureRandom = SecureRandom()
-
-        // generate a random iv key
-        // Half of the IV is random, the lower order bits are zeroed
-        // such that the counter never wraps.
-        // See https://github.com/matrix-org/matrix-ios-kit/blob/3dc0d8e46b4deb6669ed44f72ad79be56471354c/MatrixKit/Models/Room/MXEncryptedAttachments.m#L75
-        val initVectorBytes = ByteArray(16) { 0.toByte() }
-
-        val ivRandomPart = ByteArray(8)
-        secureRandom.nextBytes(ivRandomPart)
-
-        System.arraycopy(ivRandomPart, 0, initVectorBytes, 0, ivRandomPart.size)
-
-        val key = ByteArray(32)
-        secureRandom.nextBytes(key)
+        val (initVectorBytes, key) = generateIvAndKey()
 
         val messageDigest = MessageDigest.getInstance(MESSAGE_DIGEST_ALGORITHM)
         val byteArrayOutputStream = ByteArrayOutputStream()
@@ -227,7 +159,26 @@ internal object MXEncryptedAttachments {
             ),
             encryptedByteArray = byteArrayOutputStream.toByteArray()
         )
-//            .also { Timber.v("Encrypt in ${clock.now().toEpochMilliseconds() - t0}ms") }
+            .also { mLogger.log(Level.INFO, "Encrypt in ${clock.now().toEpochMilliseconds() - t0}ms") }
+    }
+
+    private fun generateIvAndKey(): Pair<ByteArray, ByteArray> {
+        val secureRandom = SecureRandom()
+
+        // generate a random iv key
+        // Half of the IV is random, the lower order bits are zeroed
+        // such that the counter never wraps.
+        // See https://github.com/matrix-org/matrix-ios-kit/blob/3dc0d8e46b4deb6669ed44f72ad79be56471354c/MatrixKit/Models/Room/MXEncryptedAttachments.m#L75
+        val initVectorBytes = ByteArray(16) { 0.toByte() }
+
+        val ivRandomPart = ByteArray(8)
+        secureRandom.nextBytes(ivRandomPart)
+
+        System.arraycopy(ivRandomPart, 0, initVectorBytes, 0, ivRandomPart.size)
+
+        val key = ByteArray(32)
+        secureRandom.nextBytes(key)
+        return Pair(initVectorBytes, key)
     }
 
     /**
@@ -239,7 +190,8 @@ internal object MXEncryptedAttachments {
      * @param clock a clock to retrieve current time
      * @return true in case of success, false in case of error
      */
-    fun decryptAttachment(
+    @JvmStatic
+    public fun decryptAttachment(
         attachmentStream: InputStream?,
         elementToDecrypt: ElementToDecrypt?,
         outputStream: OutputStream,
@@ -247,7 +199,7 @@ internal object MXEncryptedAttachments {
     ): Boolean {
         // sanity checks
         if (null == attachmentStream || elementToDecrypt == null) {
-//            Timber.e("## decryptAttachment() : null stream")
+            mLogger.log(Level.WARNING, "## decryptAttachment() : null stream")
             return false
         }
 
@@ -285,16 +237,16 @@ internal object MXEncryptedAttachments {
             val currentDigestValue = messageDigest.digest().toBase64NoPadding()
 
             if (elementToDecrypt.sha256 != currentDigestValue) {
-//                Timber.e("## decryptAttachment() :  Digest value mismatch")
+                mLogger.log(Level.WARNING, "## decryptAttachment() :  Digest value mismatch")
                 return false
             }
 
-//            Timber.v("Decrypt in ${clock.now().toEpochMilliseconds() - t0} ms")
+            mLogger.log(Level.INFO, "Decrypt in ${clock.now().toEpochMilliseconds() - t0} ms")
             return true
         } catch (oom: OutOfMemoryError) {
-//            Timber.e(oom, "## decryptAttachment() failed: OOM")
+            mLogger.log(Level.WARNING, "## decryptAttachment() failed: OOM", oom)
         } catch (e: Exception) {
-//            Timber.e(e, "## decryptAttachment() failed")
+            mLogger.log(Level.WARNING, "## decryptAttachment() failed", e)
         }
 
         return false
