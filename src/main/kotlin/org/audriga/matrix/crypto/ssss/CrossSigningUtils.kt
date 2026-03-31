@@ -1,6 +1,6 @@
 package org.audriga.matrix.crypto.ssss
 
-import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.moshi.MoshiProvider
 import org.audriga.matrix.crypto.keybackup.CryptoInfoMapper
 import org.audriga.matrix.crypto.keybackup.RestKeyInfo
 import org.audriga.matrix.crypto.keybackup.UploadSigningKeysBody

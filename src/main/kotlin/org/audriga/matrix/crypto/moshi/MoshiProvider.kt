@@ -1,13 +1,9 @@
-package keybackup
+package org.audriga.matrix.crypto.moshi
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
-import org.audriga.matrix.crypto.keybackup.CipherSuiteMoshiAdapter
-import org.audriga.matrix.crypto.keybackup.DefaultLazyRoomSyncEphemeralJsonAdapter
 import org.audriga.matrix.crypto.keybackup.ForceToBooleanJsonAdapter
-import org.audriga.matrix.crypto.keybackup.RuntimeJsonAdapterFactory
 import org.audriga.matrix.crypto.keybackup.SerializeNulls
-import org.audriga.matrix.crypto.keybackup.TlsVersionMoshiAdapter
 import org.matrix.android.sdk.api.session.identity.ThreePid
 import org.matrix.android.sdk.api.session.room.model.message.MessageAudioContent
 import org.matrix.android.sdk.api.session.room.model.message.MessageContent
@@ -25,7 +21,7 @@ import org.matrix.android.sdk.api.session.room.model.message.MessageVideoContent
 
 
 
-internal object MoshiProvider {
+object MoshiProvider {
 
     private val moshi: Moshi = Moshi.Builder()
 //        .add(UriMoshiAdapter())
@@ -56,6 +52,7 @@ internal object MoshiProvider {
         )
         .build()
 
+    @JvmStatic
     fun providesMoshi(): Moshi {
         return moshi
     }

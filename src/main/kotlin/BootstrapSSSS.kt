@@ -1,8 +1,7 @@
 //import keybackup.SecretStorageKeyContent
 import DemoUtils.Companion.createExampleEncryptedEvent
-import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.moshi.MoshiProvider
 import org.audriga.matrix.crypto.SharedSecretStorage.Companion.checkRecoveryKey
-import org.audriga.matrix.crypto.SharedSecretStorage.Companion.encryptAesHmacSha2
 import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.createKeyBackupVersionRequest
 import org.audriga.matrix.crypto.keybackup.KeyBackupService.Companion.toJsonString
 import org.audriga.matrix.crypto.ssss.CrossSigningUtils.Companion.uploadCrossSigningKeysRequestToJson
@@ -23,8 +22,6 @@ import org.matrix.rustcomponents.sdk.crypto.*
 import uniffi.matrix_sdk_crypto.LocalTrust
 import java.io.File
 import java.util.*
-import javax.crypto.spec.IvParameterSpec
-import kotlin.io.encoding.Base64
 import org.matrix.rustcomponents.sdk.crypto.OlmMachine as RustOmlMachine
 
 private const val OLM_MACHINE_PATH = "/tmp/olmMachine"

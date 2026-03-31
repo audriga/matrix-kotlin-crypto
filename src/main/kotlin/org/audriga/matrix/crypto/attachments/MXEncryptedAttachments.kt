@@ -197,15 +197,16 @@ object MXEncryptedAttachments {
         attachmentStream: InputStream?,
         elementToDecrypt: ElementToDecrypt?,
         outputStream: OutputStream,
-        clock: Clock
+        clock: Clock?
     ): Boolean {
+        val clockVar = clock ?: Clock.System
         // sanity checks
         if (null == attachmentStream || elementToDecrypt == null) {
             mLogger.log(Level.WARNING, "## decryptAttachment() : null stream")
             return false
         }
 
-        val t0 = clock.now().toEpochMilliseconds()
+        val t0 = clockVar.now().toEpochMilliseconds()
 
         try {
             val key = elementToDecrypt.k.fromBase64Url()
@@ -243,7 +244,7 @@ object MXEncryptedAttachments {
                 return false
             }
 
-            mLogger.log(Level.INFO, "Decrypt in ${clock.now().toEpochMilliseconds() - t0} ms")
+            mLogger.log(Level.INFO, "Decrypt in ${clockVar.now().toEpochMilliseconds() - t0} ms")
             return true
         } catch (oom: OutOfMemoryError) {
             mLogger.log(Level.WARNING, "## decryptAttachment() failed: OOM", oom)

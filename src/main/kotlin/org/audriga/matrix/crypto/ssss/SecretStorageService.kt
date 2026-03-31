@@ -1,6 +1,6 @@
 package org.audriga.matrix.crypto.ssss
 
-import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.moshi.MoshiProvider
 import org.audriga.matrix.crypto.SharedSecretStorage.Companion.encryptAesHmacSha2
 import org.matrix.android.sdk.api.crypto.SSSS_ALGORITHM_AES_HMAC_SHA2
 import org.matrix.android.sdk.api.session.crypto.keysbackup.computeRecoveryKey

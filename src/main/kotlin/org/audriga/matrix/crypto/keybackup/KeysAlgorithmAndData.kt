@@ -16,7 +16,7 @@ package org.audriga.matrix.crypto.keybackup/*
 
 //Copied from package org.matrix.android.sdk.internal.crypto.keysbackup.model.rest
 
-import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.moshi.MoshiProvider
 import org.matrix.android.sdk.api.crypto.MXCRYPTO_ALGORITHM_MEGOLM_BACKUP
 import org.matrix.android.sdk.api.session.crypto.keysbackup.MegolmBackupAuthData
 import org.matrix.android.sdk.api.util.JsonDict

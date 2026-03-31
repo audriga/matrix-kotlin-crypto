@@ -19,7 +19,7 @@ package org.audriga.matrix.crypto.keybackup
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
-import keybackup.MoshiProvider
+import org.audriga.matrix.crypto.moshi.MoshiProvider
 
 /**
  *
