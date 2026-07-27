@@ -120,16 +120,17 @@ class SharedSecretStorage {
             val aesKey = pseudoRandomKey.copyOfRange(0, 32)
             val macKey = pseudoRandomKey.copyOfRange(32, 64)
 
-            val iv = cipherContent.initializationVector?.fromBase64() ?: ByteArray(16)
+            // From spec: "Note also, that although clients SHOULD use unpadded base64 as specified above, some existing implementations use standard RFC4648-compliant base64 with padding, so clients must accept either encoding."
+            val iv = cipherContent.initializationVector?.fromBase64NoPadding() ?: ByteArray(16)
 
-            val cipherRawBytes = cipherContent.ciphertext?.fromBase64() ?: throw SharedSecretStorageError.BadCipherText
+            val cipherRawBytes = cipherContent.ciphertext?.fromBase64NoPadding() ?: throw SharedSecretStorageError.BadCipherText
 
             // Check Signature
             val macKeySpec = SecretKeySpec(macKey, "HmacSHA256")
             val mac = Mac.getInstance("HmacSHA256").apply { init(macKeySpec) }
             val digest = mac.doFinal(cipherRawBytes)
 
-            if (!cipherContent.mac?.fromBase64()?.contentEquals(digest).orFalse()) {
+            if (!cipherContent.mac?.fromBase64NoPadding()?.contentEquals(digest).orFalse()) {
                 throw SharedSecretStorageError.BadMac
             }
 

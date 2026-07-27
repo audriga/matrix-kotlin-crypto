@@ -20,9 +20,9 @@ fun ByteArray.toBase64Url() : String = Base64.UrlSafe.withPadding(Base64.Padding
 
 fun String.fromBase64Url() : ByteArray = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).decode(this)
 
-fun String.fromBase64(): ByteArray {
-    return Base64.decode(this)
-}
+//fun String.fromBase64(): ByteArray {
+//    return Base64.decode(this)
+//}
 
 fun String.fromBase64NoPadding(): ByteArray {
     return Base64.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).decode(this)
